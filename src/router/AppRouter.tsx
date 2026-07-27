@@ -1,33 +1,18 @@
 import { createBrowserRouter, Navigate } from 'react-router-dom';
 import Login from '../pages/Login';
+import Dashboard from '../pages/Dashboard';
+import Importar from '../pages/Importar';
+import VisorFacturas from '../pages/VisorFacturas'; // <--- Importamos la nueva vista
+import MainLayout from '../layouts/MainLayout';
 
-// Componente temporal para el Dashboard
-const Dashboard = () => (
-  <div className="p-8">
-    <h1 className="text-2xl font-bold">Bienvenido al Sistema</h1>
-    <p>Si ves esto, es porque tienes un Token JWT válido.</p>
-    <button 
-      onClick={() => { localStorage.removeItem('jwt_token'); window.location.href = '/login'; }}
-      className="mt-4 px-4 py-2 bg-red-600 text-white rounded"
-    >
-      Cerrar Sesión
-    </button>
-  </div>
-);
-
-// Guardián de Rutas: Verifica si hay token en el localStorage
 const PrivateRoute = ({ children }: { children: React.ReactNode }) => {
   const token = localStorage.getItem('jwt_token');
-  
-  // Si no hay token, lo mandamos al login inmediatamente
   if (!token) {
     return <Navigate to="/login" replace />;
   }
-
   return <>{children}</>;
 };
 
-// Configuración de las rutas
 export const router = createBrowserRouter([
   {
     path: '/login',
@@ -37,8 +22,23 @@ export const router = createBrowserRouter([
     path: '/',
     element: (
       <PrivateRoute>
-        <Dashboard />
+        <MainLayout />
       </PrivateRoute>
     ),
+    // Estas rutas hijas se renderizarán dentro del <Outlet /> del MainLayout
+    children: [
+      {
+        index: true, 
+        element: <Dashboard />,
+      },
+      {
+        path: 'importar', 
+        element: <Importar />,
+      },
+      {
+        path: 'visor', // <--- Nuestra nueva ruta
+        element: <VisorFacturas />,
+      }
+    ]
   }
 ]);
