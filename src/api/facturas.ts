@@ -1,26 +1,43 @@
-import { api } from './axios'; // Importamos tu instancia de axios ya configurada
+import { api } from './axios'; 
+import { jwtDecode } from 'jwt-decode';
 
 /**
- * Sube el archivo CSV de facturas al servidor.
+ * Sube un archivo CSV de importación al servidor de forma dinámica.
+ * Permite enviar opcionalmente la 'novedad' y 'version' para el modelo Cabecera-Detalle.
  */
-export const uploadFacturasCSV = async (file: File) => {
+export const uploadImportacionCSV = async (
+  file: File, 
+  tipoArchivo: string, 
+  novedad?: string, 
+  version?: string
+) => {
   const formData = new FormData();
   formData.append('file', file);
 
-  // IMPORTANTE: El backend ahora requiere el 'usuIdRegistro' para la Auditoría.
-  // Por ahora puedes dejar este valor por defecto, o si guardas el usuario al hacer login,
-  // puedes sacarlo de localStorage.getItem('usuario_id')
-  const usuIdRegistro = 'ADMIN_SISTEMA'; 
+  // Extraemos el usuario real del Token
+  let usuIdRegistro = 'DESCONOCIDO'; 
+  const token = localStorage.getItem('jwt_token');
 
-  // Usamos tu instancia 'api' que ya tiene la URL base ('http://localhost:8080/api')
-  // y que inyecta el Token automáticamente gracias a tu interceptor.
-  const response = await api.post('/importaciones/FACTURAS_ORIGINALES', formData, {
+  if (token) {
+    try {
+      const decoded: any = jwtDecode(token);
+      if (decoded.sub) {
+        usuIdRegistro = decoded.sub; 
+      }
+    } catch (error) {
+      console.error('Error al decodificar el token:', error);
+    }
+  }
+
+  // La URL es dinámica y los parámetros (novedad/version) solo se envían si tienen un valor
+  const response = await api.post(`/importaciones/${tipoArchivo}`, formData, {
     params: {
-      usuIdRegistro: usuIdRegistro // Se envía como parámetro en la URL (?usuIdRegistro=...)
+      usuIdRegistro: usuIdRegistro,
+      ...(novedad && { novedad }), 
+      ...(version && { version })
     },
     headers: {
       'Content-Type': 'multipart/form-data',
-      // ¡El 'Authorization: Bearer...' ya no hace falta aquí! Tu interceptor lo hace por ti.
     },
   });
   
@@ -35,7 +52,6 @@ export const getFacturas = async (
   size: number = 10, 
   filtros: { factura?: string; codigoDataease?: string; jobId?: string } = {}
 ) => {
-  // Solo enviamos los filtros que realmente tienen texto
   const params = {
     page,
     size,

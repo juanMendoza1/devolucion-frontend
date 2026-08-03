@@ -4,6 +4,7 @@ import Dashboard from '../pages/Dashboard';
 import Importar from '../pages/Importar';
 import VisorFacturas from '../pages/VisorFacturas'; // <--- Importamos la nueva vista
 import MainLayout from '../layouts/MainLayout';
+import ModuloTarifas from '../pages/Tarifas/ModuloTarifas';
 
 const PrivateRoute = ({ children }: { children: React.ReactNode }) => {
   const token = localStorage.getItem('jwt_token');
@@ -38,6 +39,10 @@ export const router = createBrowserRouter([
       {
         path: 'visor', // <--- Nuestra nueva ruta
         element: <VisorFacturas />,
+      },
+      {
+        path: 'tarifas', 
+        element: <ModuloTarifas />,
       }
     ]
   }

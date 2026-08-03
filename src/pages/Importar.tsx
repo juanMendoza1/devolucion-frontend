@@ -1,30 +1,51 @@
 import { useState, useEffect, useRef } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { UploadCloud, FileText, CheckCircle2, Info, Loader2 } from 'lucide-react';
+import { UploadCloud, FileText, CheckCircle2, Info, Loader2, Database } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Client } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
-import { uploadFacturasCSV } from '../api/facturas';
+import { uploadImportacionCSV } from '../api/facturas';
+
+// 1. Diccionario de Tipos de Importación
+const IMPORT_CONFIGS = {
+  FACTURAS_ORIGINALES: {
+    label: 'Facturas Originales',
+    description: 'Carga de facturas maestras extraídas del sistema externo.',
+    columns: [
+      'codigo_dataease', 'esp', 'usuario', 'factura', 'uso', 
+      'estrato', 'desocupa', 'descto_pap', 'medicion_aforo', 
+      'estado', 'porcentaje', 'pagada', 'fecha_pago', 'vlr_factu', 
+      'vlr_pagado', 'mes', 'ano', 'toneladas'
+    ]
+  },
+  BASE_TARIFAS: {
+    label: 'Base Tarifas (Ajustes)',
+    description: 'Actualización de parámetros, liquidaciones y ajustes tarifarios.',
+    columns: [
+      'mes', 'anio', 'estrato', 'concepto', 'aplicado', 
+      'ajustado', 'devolucion', 'porsubcon', 'subcon', 
+      'devolucion_aplicar', 'liquidacion', 'esp'
+    ]
+  }
+};
+
+// Tipo para el selector
+type ImportTypeKey = keyof typeof IMPORT_CONFIGS;
 
 export default function Importar() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [statusMessage, setStatusMessage] = useState('');
   
-  // Referencia para mantener vivo el cliente WebSocket
+  // 2. Estados para el dinamismo y la cabecera
+  const [importType, setImportType] = useState<ImportTypeKey>('FACTURAS_ORIGINALES');
+  const [novedad, setNovedad] = useState('');
+  const [version, setVersion] = useState('');
+  
   const stompClientRef = useRef<Client | null>(null);
 
-  const expectedColumns = [
-    'codigo_dataease', 'esp', 'usuario', 'factura', 'uso', 
-    'estrato', 'desocupa', 'descto_pap', 'medicion_aforo', 
-    'estado', 'porcentaje', 'pagada', 'fecha_pago', 'vlr_factu', 
-    'vlr_pagado', 'mes', 'ano', 'toneladas'
-  ];
-
-  // 1. Inicializar WebSocket al cargar el componente
   useEffect(() => {
     const client = new Client({
-      // Ajusta localhost:8080 a la URL de tu backend
       webSocketFactory: () => new SockJS('http://localhost:8080/ws-import'),
       reconnectDelay: 5000,
       onConnect: () => console.log('Conectado al servidor de WebSockets'),
@@ -35,50 +56,45 @@ export default function Importar() {
     stompClientRef.current = client;
 
     return () => {
-      client.deactivate(); // Limpiamos la conexión al desmontar la vista
+      client.deactivate(); 
     };
   }, []);
 
-  // 2. Lógica de subida y suscripción
   const uploadMutation = useMutation({
     mutationFn: async (file: File) => {
       setUploadProgress(0);
       setStatusMessage('Enviando archivo al servidor...');
-      const data = await uploadFacturasCSV(file);
-      return data.jobId; // Retornamos el jobId que nos da el backend
+      // 3. Pasamos el tipo, la novedad y la versión a la API
+      const data = await uploadImportacionCSV(file, importType, novedad, version);
+      return data.jobId; 
     },
     onSuccess: (jobId) => {
-      // Si tenemos conexión, nos suscribimos al canal de este archivo específico
       if (stompClientRef.current && stompClientRef.current.connected) {
-        
         const subscription = stompClientRef.current.subscribe(
           `/topic/import-progress/${jobId}`, 
           (message) => {
             const data = JSON.parse(message.body);
             
-            // Actualizar porcentaje (ignorar -1 que usamos solo para mensajes de estado)
             if (data.porcentaje !== -1) {
               setUploadProgress(data.porcentaje);
             }
             
-            // Actualizar el texto descriptivo
             setStatusMessage(data.mensaje);
 
-            // Evaluar fin del proceso
             if (data.porcentaje === 100) {
               toast.success('Archivo cargado y procesado exitosamente');
               setTimeout(() => {
                 setSelectedFile(null);
                 setUploadProgress(0);
                 setStatusMessage('');
+                setNovedad('');
+                setVersion('');
               }, 2500);
-              subscription.unsubscribe(); // Cerramos la suscripción
+              subscription.unsubscribe(); 
             } 
-            // Evaluar error de validación estricta
             else if (data.porcentaje === 0 && data.mensaje.includes('ERROR')) {
-              // Aquí pasamos de un texto quemado a mostrar el error detallado del backend
               toast.error(data.mensaje.replace('ERROR: ', ''), {
-                duration: 6000, // Le damos un poco más de tiempo para que el usuario alcance a leer
+                duration: 6000, 
               });
               setUploadProgress(0);
               setStatusMessage('');
@@ -110,37 +126,110 @@ export default function Importar() {
 
   const handleUpload = () => {
     if (!selectedFile) return;
+    
+    // Pequeña validación extra si es Tarifas para que no lo manden vacío
+    if (importType === 'BASE_TARIFAS' && (!novedad.trim() || !version.trim())) {
+      toast.error('Por favor ingresa el Nombre de la Novedad y la Versión');
+      return;
+    }
+
     uploadMutation.mutate(selectedFile);
   };
+
+  // Variable de atajo para la configuración actual
+  const currentConfig = IMPORT_CONFIGS[importType];
 
   return (
     <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in duration-500">
       
-      {/* Título */}
       <div>
-        <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Importar Facturas</h1>
+        <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Importar Datos</h1>
         <p className="text-gray-400 text-sm mt-1.5 font-medium">
-          Carga el archivo original del sistema externo para iniciar el proceso.
+          Carga archivos CSV para alimentar las diferentes bases de datos del sistema.
         </p>
       </div>
 
-      {/* Tarjeta Principal Unificada */}
       <div className="bg-white rounded-3xl p-8 lg:p-10 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-50">
         
-        {/* Leyenda de Estructura */}
-        <div className="mb-10 bg-[#F8F9FA] rounded-2xl p-6 border border-gray-100">
+        {/* SELECTOR MODERNO DE TIPO DE IMPORTACIÓN */}
+        <div className="mb-8">
+          <label className="block text-sm font-bold text-gray-900 mb-3">
+            ¿Qué tipo de información deseas cargar?
+          </label>
+          <div className="relative group">
+            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+              <Database className="h-5 w-5 text-gray-400 group-focus-within:text-gray-900 transition-colors" />
+            </div>
+            <select
+              value={importType}
+              onChange={(e) => {
+                setImportType(e.target.value as ImportTypeKey);
+                setSelectedFile(null);
+                setNovedad(''); // Resetea campos al cambiar
+                setVersion('');
+              }}
+              disabled={uploadMutation.isPending || uploadProgress > 0}
+              className="block w-full pl-12 pr-10 py-3.5 bg-[#F8F9FA] border border-gray-100 rounded-2xl text-sm font-semibold text-gray-900 focus:bg-white focus:border-gray-900 focus:ring-1 focus:ring-gray-900 appearance-none cursor-pointer transition-all disabled:opacity-50"
+            >
+              {Object.entries(IMPORT_CONFIGS).map(([key, config]) => (
+                <option key={key} value={key}>
+                  {config.label}
+                </option>
+              ))}
+            </select>
+            <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none">
+              <svg className="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+              </svg>
+            </div>
+          </div>
+          <p className="text-sm text-gray-500 font-medium mt-2 ml-1">
+            {currentConfig.description}
+          </p>
+
+          {/* CAMPOS DINÁMICOS PARA BASE DE TARIFAS */}
+          {importType === 'BASE_TARIFAS' && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6 animate-in slide-in-from-top-2">
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2">Nombre de la Novedad <span className="text-red-500">*</span></label>
+                <input
+                  type="text"
+                  placeholder="Ej: Ajuste IPC 2026"
+                  value={novedad}
+                  onChange={(e) => setNovedad(e.target.value)}
+                  disabled={uploadMutation.isPending || uploadProgress > 0}
+                  className="block w-full px-4 py-3 bg-gray-50/50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:bg-white focus:border-gray-900 focus:ring-1 focus:ring-gray-900 transition-all disabled:opacity-50"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2">Versión <span className="text-red-500">*</span></label>
+                <input
+                  type="text"
+                  placeholder="Ej: V.1.0"
+                  value={version}
+                  onChange={(e) => setVersion(e.target.value)}
+                  disabled={uploadMutation.isPending || uploadProgress > 0}
+                  className="block w-full px-4 py-3 bg-gray-50/50 border border-gray-200 rounded-xl text-sm text-gray-900 focus:bg-white focus:border-gray-900 focus:ring-1 focus:ring-gray-900 transition-all disabled:opacity-50"
+                />
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Leyenda de Estructura Dinámica */}
+        <div className="mb-10 bg-[#F8F9FA] rounded-2xl p-6 border border-gray-100 transition-all">
           <div className="flex items-center mb-3">
             <div className="bg-white p-2 rounded-xl shadow-sm mr-3">
               <Info className="h-5 w-5 text-gray-700" />
             </div>
-            <h3 className="text-base font-bold text-gray-900">Estructura Requerida</h3>
+            <h3 className="text-base font-bold text-gray-900">Columnas Requeridas</h3>
           </div>
           <p className="text-sm text-gray-500 font-medium mb-5 leading-relaxed">
-            El archivo CSV debe contener la fila de encabezados exactos en el orden establecido para evitar errores de validación en el cargue masivo.
+            El archivo CSV debe contener exactamente estas columnas en la primera fila.
           </p>
           
           <div className="flex flex-wrap gap-2">
-            {expectedColumns.map((col, index) => (
+            {currentConfig.columns.map((col, index) => (
               <span 
                 key={index} 
                 className="px-3 py-1.5 bg-white text-gray-700 text-xs font-semibold rounded-lg border border-gray-100 font-mono shadow-sm"
@@ -199,7 +288,6 @@ export default function Importar() {
               </button>
             </div>
 
-            {/* Barra de estado visual REAL */}
             {(uploadMutation.isPending || uploadProgress > 0) && (
               <div className="space-y-2 mt-4 animate-in fade-in duration-300">
                 <div className="flex justify-between text-xs font-bold text-gray-900">
