@@ -1,6 +1,6 @@
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
-// Agregamos el icono 'Search' (o 'FileText' si lo prefieres) a los imports
-import { LayoutDashboard, UploadCloud, LogOut, User,Users, Command, Search } from 'lucide-react';
+// Agregamos el icono 'Calculator' para el nuevo módulo de Reliquidación
+import { LayoutDashboard, UploadCloud, LogOut, User, Users, Command, Search, Calculator } from 'lucide-react';
 
 export default function MainLayout() {
   const location = useLocation();
@@ -12,12 +12,13 @@ export default function MainLayout() {
   };
 
   // Agregamos el nuevo botón a la lista del menú
-const menuItems = [
-  { path: '/', icon: LayoutDashboard, label: 'Dashboard' },
-  { path: '/importar', icon: UploadCloud, label: 'Importaciones' },
-  { path: '/visor', icon: Search, label: 'Visor de Facturas' },
-  { path: '/tarifas', icon: Users, label: 'Gestión de Tarifas' }, // <--- Nuevo botón
-];
+  const menuItems = [
+    { path: '/', icon: LayoutDashboard, label: 'Dashboard' },
+    { path: '/importar', icon: UploadCloud, label: 'Importaciones' },
+    { path: '/visor', icon: Search, label: 'Visor de Facturas' },
+    { path: '/tarifas', icon: Users, label: 'Gestión de Tarifas' },
+    { path: '/reliquidacion', icon: Calculator, label: 'Reliquidación' }, // <--- Nuevo botón integrado
+  ];
 
   return (
     <div className="min-h-screen bg-[#F8F9FA] flex font-sans text-gray-900">

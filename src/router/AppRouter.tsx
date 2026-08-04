@@ -2,9 +2,10 @@ import { createBrowserRouter, Navigate } from 'react-router-dom';
 import Login from '../pages/Login';
 import Dashboard from '../pages/Dashboard';
 import Importar from '../pages/Importar';
-import VisorFacturas from '../pages/VisorFacturas'; // <--- Importamos la nueva vista
+import VisorFacturas from '../pages/VisorFacturas';
 import MainLayout from '../layouts/MainLayout';
 import ModuloTarifas from '../pages/Tarifas/ModuloTarifas';
+import { ModuloReliquidacion } from '../pages/Reliquidacion/ModuloReliquidacion'; // <--- Importamos la nueva vista
 
 const PrivateRoute = ({ children }: { children: React.ReactNode }) => {
   const token = localStorage.getItem('jwt_token');
@@ -37,12 +38,16 @@ export const router = createBrowserRouter([
         element: <Importar />,
       },
       {
-        path: 'visor', // <--- Nuestra nueva ruta
+        path: 'visor', 
         element: <VisorFacturas />,
       },
       {
         path: 'tarifas', 
         element: <ModuloTarifas />,
+      },
+      {
+        path: 'reliquidacion', // <--- Nuestra nueva ruta de Reliquidación
+        element: <ModuloReliquidacion />,
       }
     ]
   }
