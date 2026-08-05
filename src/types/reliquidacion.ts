@@ -4,7 +4,8 @@ export interface Periodo {
 }
 
 export interface ReliquidacionRequest {
-  jobId: string;
+  consolidadoTarifas: string; // Nuevo: Nombre de la campaña o grupo
+  jobIds: string[];           // Nuevo: Arreglo para soportar múltiples lotes a la vez
   concepto: string;
   tipoInteres: string;
   esDemo: boolean;
@@ -13,7 +14,8 @@ export interface ReliquidacionRequest {
 
 export interface ReliquidacionResponse {
   id?: number;
-  jobId: string;
+  consolidadoTarifas: string; // Nuevo: Agrupador principal que viene del backend
+  jobId: string;              // Se mantiene para saber de qué lote específico viene este registro
   facturaOriginalId: number;
   concepto: string;
   mesBase: number;
@@ -28,13 +30,14 @@ export interface ReliquidacionResponse {
   fechaCalculo?: string;
 }
 
-// --- NUEVOS TIPOS PARA PARÁMETROS DINÁMICOS ---
 export interface LoteInfo {
   jobId: string;
   descripcion: string;
 }
 
 export interface ParametrosConfig {
+  idVersionTarifa?: number;
+  lote?: string;
   lotes: LoteInfo[];
   conceptos: string[];
   tiposInteres: string[];

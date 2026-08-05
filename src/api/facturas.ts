@@ -1,10 +1,6 @@
 import { api } from './axios'; 
 import { jwtDecode } from 'jwt-decode';
 
-/**
- * Sube un archivo CSV de importación al servidor de forma dinámica.
- * Permite enviar opcionalmente la 'novedad' y 'version' para el modelo Cabecera-Detalle.
- */
 export const uploadImportacionCSV = async (
   file: File, 
   tipoArchivo: string, 
@@ -14,7 +10,6 @@ export const uploadImportacionCSV = async (
   const formData = new FormData();
   formData.append('file', file);
 
-  // Extraemos el usuario real del Token
   let usuIdRegistro = 'DESCONOCIDO'; 
   const token = localStorage.getItem('jwt_token');
 
@@ -29,10 +24,9 @@ export const uploadImportacionCSV = async (
     }
   }
 
-  // La URL es dinámica y los parámetros (novedad/version) solo se envían si tienen un valor
   const response = await api.post(`/importaciones/${tipoArchivo}`, formData, {
     params: {
-      usuIdRegistro: usuIdRegistro,
+      usuIdRegistro,
       ...(novedad && { novedad }), 
       ...(version && { version })
     },
@@ -44,9 +38,6 @@ export const uploadImportacionCSV = async (
   return response.data;
 };
 
-/**
- * Obtiene el listado de facturas paginado y filtrado.
- */
 export const getFacturas = async (
   page: number = 0, 
   size: number = 10, 
@@ -61,5 +52,11 @@ export const getFacturas = async (
   };
 
   const response = await api.get('/facturas', { params });
+  return response.data;
+};
+
+// Reemplaza a src/api/auditoria.ts
+export const getHistorialAuditoria = async () => {
+  const response = await api.get('/auditoria');
   return response.data;
 };

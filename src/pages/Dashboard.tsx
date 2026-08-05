@@ -1,22 +1,17 @@
 import { useQuery } from '@tanstack/react-query';
 import { ArrowDownToLine, Activity, Clock, CheckCircle, FileSpreadsheet, Loader2, AlertCircle } from 'lucide-react';
-import { getHistorialAuditoria } from '../api/auditoria';
+import { getHistorialAuditoria } from '../api/facturas';
 
 export default function Dashboard() {
-  
-  // Consulta a React Query para traer el historial
   const { data: auditorias, isLoading, isError } = useQuery({
     queryKey: ['auditorias'],
     queryFn: getHistorialAuditoria,
-    // Refrescar automáticamente cada 10 segundos para ver si una importación "EN_PROCESO" termina
     refetchInterval: 10000, 
   });
 
-  // Función para formatear fechas (ej: "24/7/2026, 09:30 AM")
   const formatearFecha = (fechaArray: string | number[]) => {
     if (!fechaArray) return '-';
     try {
-      // Spring a veces devuelve la fecha como un array [año, mes, dia, hora, min, seg] o un string ISO
       const fecha = Array.isArray(fechaArray) 
         ? new Date(fechaArray[0], fechaArray[1] - 1, fechaArray[2], fechaArray[3] || 0, fechaArray[4] || 0)
         : new Date(fechaArray);
@@ -32,8 +27,6 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
-      
-      {/* Título limpio */}
       <div>
         <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Resumen Operativo</h1>
         <p className="text-gray-400 text-sm mt-1.5 font-medium">
@@ -41,7 +34,6 @@ export default function Dashboard() {
         </p>
       </div>
 
-      {/* Tarjetas de KPIs Minimalistas (Estáticas por ahora) */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <KPICard title="Total Reliquidado" value="$0" icon={Activity} />
         <KPICard title="Total a Devolver" value="$0" icon={ArrowDownToLine} />
@@ -49,7 +41,6 @@ export default function Dashboard() {
         <KPICard title="Procesos Pendientes" value="0" icon={Clock} />
       </div>
 
-      {/* Tarjeta del Historial de Importaciones */}
       <div className="bg-white rounded-3xl p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-50 flex flex-col min-h-[400px]">
         <div className="flex items-center justify-between mb-6">
           <div>
@@ -61,7 +52,6 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Tabla de Auditoría */}
         <div className="flex-1 overflow-x-auto rounded-xl border border-gray-100">
           <table className="w-full text-left border-collapse">
             <thead>
@@ -129,7 +119,6 @@ export default function Dashboard() {
                         {audit.estado === 'EN_PROCESO' && <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />}
                         {audit.estado}
                       </span>
-                      {/* Si hay error, mostrar un tooltip o pequeño texto debajo */}
                       {audit.estado === 'ERROR' && audit.mensajeError && (
                         <div className="text-[10px] text-red-500 mt-1 max-w-[150px] truncate" title={audit.mensajeError}>
                           {audit.mensajeError}
@@ -147,7 +136,6 @@ export default function Dashboard() {
   );
 }
 
-// Subcomponente de Tarjeta con Sombra Suave
 function KPICard({ title, value, icon: Icon }: any) {
   return (
     <div className="bg-white p-6 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-50 flex items-center justify-between hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] transition-shadow duration-300">
