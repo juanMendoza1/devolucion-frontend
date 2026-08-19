@@ -2,10 +2,10 @@ import { api } from './axios';
 import type { ReliquidacionRequest, ReliquidacionResponse, ParametrosConfig } from '../types/reliquidacion';
 
 export const reliquidacionApi = {
-  // Petición para ejecutar el cálculo (Modo Demo o Producción)
-  calcular: async (data: ReliquidacionRequest): Promise<ReliquidacionResponse[]> => {
+  // Cambiamos el retorno a Promise<any> porque en Modo Prod devuelve un Objeto y en Demo un Array
+  calcular: async (data: ReliquidacionRequest): Promise<any> => {
     try {
-      const response = await api.post<ReliquidacionResponse[]>('/reliquidaciones/calcular', data);
+      const response = await api.post('/reliquidaciones/calcular', data);
       return response.data;
     } catch (error) {
       console.error('Error al calcular la reliquidación:', error);
@@ -13,7 +13,6 @@ export const reliquidacionApi = {
     }
   },
 
-  // Petición para traer Lotes, Conceptos y Tipos de Interés desde el backend
   getParametros: async (): Promise<ParametrosConfig> => {
     try {
       const response = await api.get<ParametrosConfig>('/reliquidaciones/parametros');
@@ -24,7 +23,6 @@ export const reliquidacionApi = {
     }
   },
 
-  // NUEVA: Petición para consultar los registros en vivo por Consolidado durante el proceso masivo
   getResultadosEnVivo: async (consolidadoTarifas: string): Promise<ReliquidacionResponse[]> => {
     try {
       const response = await api.get<ReliquidacionResponse[]>(`/reliquidaciones/parcial/${encodeURIComponent(consolidadoTarifas)}`);

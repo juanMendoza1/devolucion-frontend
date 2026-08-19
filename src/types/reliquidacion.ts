@@ -28,6 +28,9 @@ export interface ReliquidacionResponse {
   totalDevolucion: number;
   esDemo: boolean;
   fechaCalculo?: string;
+  factura?: string;
+  codigoDataease?: string;
+  detalleTasas?: string;
 }
 
 export interface LoteInfo {
