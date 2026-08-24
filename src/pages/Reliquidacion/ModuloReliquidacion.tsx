@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Client } from '@stomp/stompjs';
-import SockJS from 'sockjs-client';
+import toast from 'react-hot-toast';
 import { reliquidacionApi } from '../../api/reliquidacion';
+import { useWebSocketProgress } from '../../hooks/useWebSocketProgress';
 import type { ReliquidacionRequest, ReliquidacionResponse, ParametrosConfig } from '../../types/reliquidacion';
 
 export const ModuloReliquidacion = () => {
@@ -12,7 +12,6 @@ export const ModuloReliquidacion = () => {
   
   // --- ESTADOS DE DATOS ---
   const [resultados, setResultados] = useState<ReliquidacionResponse[]>([]);
-  const [progreso, setProgreso] = useState({ porcentaje: 0, mensaje: '' });
 
   const [formData, setFormData] = useState<ReliquidacionRequest>({
     consolidadoTarifas: '',
@@ -31,7 +30,33 @@ export const ModuloReliquidacion = () => {
 
   const nombresMeses = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
 
-  // --- EFECTO 1: RECUPERAR ESTADO PERDIDO Y CARGAR PARÁMETROS ---
+  // --- WEBSOCKETS EN TIEMPO REAL (Vía Custom Hook) ---
+  // El topic solo se activa si estamos procesando, en modo producción y hay un consolidado
+  const activeTopic = (isProcessing && !formData.esDemo && formData.consolidadoTarifas)
+    ? `/topic/reliquidacion-progress/${formData.consolidadoTarifas}`
+    : null;
+
+  const { progreso, setProgreso } = useWebSocketProgress({
+    topic: activeTopic,
+    onMessage: (data) => {
+      // Actualizamos la tabla si el porcentaje es divisible por 10 (10%, 20%...) o es 100%
+      if (data.porcentaje % 10 === 0 || data.porcentaje === 100) {
+        reliquidacionApi.getResultadosEnVivo(formData.consolidadoTarifas)
+          .then(setResultados)
+          .catch(console.error);
+      }
+    },
+    onComplete: () => {
+      finalizarProceso();
+      toast.success('Motor de cálculo finalizado exitosamente.');
+    },
+    onError: (msg) => {
+      toast.error(msg);
+      finalizarProceso();
+    }
+  });
+
+  // --- EFECTO: RECUPERAR ESTADO PERDIDO Y CARGAR PARÁMETROS ---
   useEffect(() => {
     // Revisamos si había un proceso corriendo antes de que el usuario se fuera
     const activeJob = localStorage.getItem('active_reliquidacion');
@@ -57,43 +82,13 @@ export const ModuloReliquidacion = () => {
         }));
       } catch (error) {
         console.error('Error al conectar con el servidor:', error);
+        toast.error('Error al cargar la configuración inicial.');
       } finally {
         setLoadingConfig(false);
       }
     };
     fetchParametros();
-  }, []);
-
-  // --- EFECTO 2: WEBSOCKETS EN TIEMPO REAL ---
-  useEffect(() => {
-    if (!isProcessing || formData.esDemo || !formData.consolidadoTarifas) return;
-
-    const socket = new SockJS('http://localhost:8080/ws-import'); 
-    const client = new Client({
-      webSocketFactory: () => socket,
-      onConnect: () => {
-        client.subscribe(`/topic/reliquidacion-progress/${formData.consolidadoTarifas}`, (message) => {
-          const data = JSON.parse(message.body);
-          setProgreso({ porcentaje: data.porcentaje, mensaje: data.mensaje });
-
-          if (data.porcentaje % 10 === 0 || data.porcentaje === 100) {
-            reliquidacionApi.getResultadosEnVivo(formData.consolidadoTarifas)
-              .then(setResultados)
-              .catch(console.error);
-          }
-
-          // Si el servidor avisa que terminó, limpiamos la memoria
-          if (data.porcentaje === 100) {
-            finalizarProceso();
-            client.deactivate();
-          }
-        });
-      }
-    });
-    
-    client.activate();
-    return () => { client.deactivate(); };
-  }, [isProcessing, formData.esDemo, formData.consolidadoTarifas]);
+  }, [setProgreso]);
 
   // --- MANEJADORES ---
   const handleToggleJob = (jobId: string) => {
@@ -111,7 +106,7 @@ export const ModuloReliquidacion = () => {
     const mesFinAbsoluto = (rango.hastaAno * 12) + (rango.hastaMes - 1);
 
     if (mesInicioAbsoluto > mesFinAbsoluto) {
-      alert('Error: El periodo "Desde" no puede ser mayor al periodo "Hasta".');
+      toast.error('El periodo "Desde" no puede ser mayor al periodo "Hasta".');
       return;
     }
 
@@ -130,10 +125,10 @@ export const ModuloReliquidacion = () => {
     localStorage.removeItem('active_reliquidacion');
   };
 
-const handleCalcular = async () => {
-    if (!formData.consolidadoTarifas.trim()) return alert('Debes asignar un Nombre de Consolidado (Campaña).');
-    if (formData.jobIds.length === 0) return alert('Debes seleccionar al menos un Lote de Tarifas.');
-    if (formData.periodosOrdenados.length === 0) return alert('Debes generar la línea de tiempo.');
+  const handleCalcular = async () => {
+    if (!formData.consolidadoTarifas.trim()) return toast.error('Debes asignar un Nombre de Consolidado (Campaña).');
+    if (formData.jobIds.length === 0) return toast.error('Debes seleccionar al menos un Lote de Tarifas.');
+    if (formData.periodosOrdenados.length === 0) return toast.error('Debes generar la línea de tiempo.');
 
     setIsProcessing(true);
     setProgreso({ porcentaje: 0, mensaje: 'Iniciando motor de consolidación...' });
@@ -153,14 +148,13 @@ const handleCalcular = async () => {
         // En MODO DEMO, data es un Array con los resultados
         setResultados(data);
         finalizarProceso();
-        if (data.length === 0) alert('No se encontraron datos calculados.');
+        if (data.length === 0) toast.error('No se encontraron datos calculados.');
       } else {
-        // En MODO PRODUCCIÓN, data es el objeto { mensaje: "Proceso encolado..." }
-        // No hacemos setResultados() aquí. El WebSocket actualizará la tabla automáticamente.
+        // En MODO PRODUCCIÓN, el hook de WebSockets se encargará del resto
         console.log("El servidor confirmó la recepción:", data.mensaje);
       }
     } catch (error) {
-      alert('Error ejecutando el cálculo. Revisa la consola o los logs del servidor.');
+      toast.error('Error ejecutando el cálculo. Revisa la consola o los logs del servidor.');
       finalizarProceso();
     }
   };
