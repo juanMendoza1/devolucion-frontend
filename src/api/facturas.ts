@@ -38,10 +38,17 @@ export const uploadImportacionCSV = async (
   return response.data;
 };
 
+// 🔥 NUEVO: Obtiene la lista de periodos únicos (mes/año) para el Select del frontend
+export const getPeriodosFacturas = async () => {
+  const response = await api.get('/facturas/periodos');
+  return response.data;
+};
+
+// 🔥 ACTUALIZADO: Agregamos mes y anio a la interfaz de filtros
 export const getFacturas = async (
   page: number = 0, 
   size: number = 10, 
-  filtros: { factura?: string; codigoDataease?: string; jobId?: string } = {}
+  filtros: { factura?: string; codigoDataease?: string; jobId?: string; mes?: number; anio?: number } = {}
 ) => {
   const params = {
     page,
@@ -49,14 +56,20 @@ export const getFacturas = async (
     ...(filtros.factura && { factura: filtros.factura }),
     ...(filtros.codigoDataease && { codigoDataease: filtros.codigoDataease }),
     ...(filtros.jobId && { jobId: filtros.jobId }),
+    ...(filtros.mes && { mes: filtros.mes }),
+    ...(filtros.anio && { anio: filtros.anio }),
   };
 
   const response = await api.get('/facturas', { params });
   return response.data;
 };
 
-// Reemplaza a src/api/auditoria.ts
 export const getHistorialAuditoria = async () => {
   const response = await api.get('/auditoria');
+  return response.data;
+};
+
+export const getHistorialCodigo = async (codigoDataease: string) => {
+  const response = await api.get(`/reliquidaciones/historial/${codigoDataease}`);
   return response.data;
 };

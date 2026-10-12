@@ -18,12 +18,6 @@ export const getAprovechadoresActivos = async () => {
   return response.data;
 };
 
-// 4. Envía la asignación masiva al backend
-export const asignarAprovechador = async (data: { aprovechadorId: number; tarifasIds: number[] }) => {
-  const response = await api.post('/tarifas/asignar-aprovechador', data);
-  return response.data;
-};
-
 // 5. Obtiene el historial de auditoría
 export const getAuditoria = async () => {
   const response = await api.get('/tarifas/auditoria');
@@ -32,5 +26,31 @@ export const getAuditoria = async () => {
 
 export const asignarLoteCompleto = async (data: { jobId: string; mes: number; anio: number; aprovechadorId: number }) => {
   const response = await api.post('/tarifas/asignar-lote-completo', data);
+  return response.data;
+};
+
+export const resetFactoryTarifas = async () => {
+  const response = await api.delete('/tarifas/reset-factory');
+  return response.data;
+};
+
+export const getResumenAsignaciones = async () => {
+  const response = await api.get('/tarifas/historico-asignaciones');
+  return response.data;
+};
+
+export const getDetalleAsignacion = async (jobId: string, aprovechadorId: number) => {
+  const response = await api.get('/tarifas/historico-asignaciones/detalle', {
+    params: { jobId, aprovechadorId }
+  });
+  return response.data;
+};
+
+export const asignarAprovechador = async (data: { aprovechadorIds: number[]; tarifasIds: number[] }) => {
+  const response = await api.post('/tarifas/asignar-aprovechador', data);
+  return response.data;
+};
+export const retirarAprovechador = async (data: { aprovechadorIds: number[]; tarifasIds: number[] }) => {
+  const response = await api.post('/tarifas/retirar-aprovechador', data);
   return response.data;
 };

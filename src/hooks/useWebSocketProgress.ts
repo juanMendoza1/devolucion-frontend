@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
-import { Client, IMessage } from '@stomp/stompjs';
+import { Client, type IMessage } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
+import { WS_URL } from '../config';
 
 interface ProgressData {
   porcentaje: number;
@@ -30,7 +31,7 @@ export function useWebSocketProgress({ topic, onMessage, onComplete, onError }: 
     if (!topic) return;
 
     const client = new Client({
-      webSocketFactory: () => new SockJS('http://localhost:8080/ws-import'),
+      webSocketFactory: () => new SockJS(WS_URL),
       reconnectDelay: 5000,
       onConnect: () => {
         console.log(`📡 Conectado y suscrito a: ${topic}`);

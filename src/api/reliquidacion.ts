@@ -1,8 +1,7 @@
 import { api } from './axios';
-import type { ReliquidacionRequest, ReliquidacionResponse, ParametrosConfig } from '../types/reliquidacion';
+import type { ReliquidacionRequest, ReliquidacionResponse, ParametrosConfig , DevolucionMaestro,ConsolidadoMes } from '../types/reliquidacion';
 
-export const reliquidacionApi = {
-  // Cambiamos el retorno a Promise<any> porque en Modo Prod devuelve un Objeto y en Demo un Array
+export const reliquidacionApi = {  
   calcular: async (data: ReliquidacionRequest): Promise<any> => {
     try {
       const response = await api.post('/reliquidaciones/calcular', data);
@@ -21,6 +20,22 @@ export const reliquidacionApi = {
       console.error('Error al cargar parámetros:', error);
       throw error;
     }
+  },
+
+  getDetalleMensual: async (id: number): Promise<ConsolidadoMes[]> => {
+    const response = await api.get(`/reliquidaciones/consolidados/${id}/detalle-mensual`);
+    return response.data;
+  },
+
+  getConsolidados: async (): Promise<DevolucionMaestro[]> => {
+    
+    const response = await api.get('/reliquidaciones/consolidados');
+    return response.data;
+  },
+
+  getDesgloseMaestro: async (maestroId: number) => {
+    const response = await api.get(`/reliquidaciones/maestro/${maestroId}/desglose`);
+    return response.data;
   },
 
   getResultadosEnVivo: async (consolidadoTarifas: string): Promise<ReliquidacionResponse[]> => {

@@ -3,19 +3,26 @@ export interface Periodo {
   ano: number;
 }
 
-export interface ReliquidacionRequest {
-  consolidadoTarifas: string; // Nuevo: Nombre de la campaña o grupo
-  jobIds: string[];           // Nuevo: Arreglo para soportar múltiples lotes a la vez
+export interface TarifaConfig {
+  jobId: string;
+  nombreVisible: string;
   concepto: string;
   tipoInteres: string;
-  esDemo: boolean;
   periodosOrdenados: Periodo[];
+}
+
+export interface ReliquidacionRequest {
+  nombreDevolucion: string;      
+  tarifasConfig: TarifaConfig[]; 
+  esDemo: boolean;  
+  codigosPrueba: string[];      
+  tarifasAProcesar: string[];   
 }
 
 export interface ReliquidacionResponse {
   id?: number;
-  consolidadoTarifas: string; // Nuevo: Agrupador principal que viene del backend
-  jobId: string;              // Se mantiene para saber de qué lote específico viene este registro
+  consolidadoTarifas: string;
+  jobId: string;
   facturaOriginalId: number;
   concepto: string;
   mesBase: number;
@@ -31,6 +38,11 @@ export interface ReliquidacionResponse {
   factura?: string;
   codigoDataease?: string;
   detalleTasas?: string;
+  aplicado?: number;
+  ajustado?: number;
+  devolucion?: number;
+  porsubcon?: number;
+  subcon?: number;
 }
 
 export interface LoteInfo {
@@ -44,4 +56,37 @@ export interface ParametrosConfig {
   lotes: LoteInfo[];
   conceptos: string[];
   tiposInteres: string[];
+}
+
+export interface DevolucionMaestro {
+  id: number;
+  nombreDevolucion: string;
+  fechaCalculo: string;
+  usuario: string;
+  esDemo: boolean;
+  cantidadTarifas: number;
+  cantidadRegistros: number;
+  totalCapital: number;    
+  totalIntereses: number;  
+  totalDevolucion: number;
+}
+
+export interface ConsolidadoMes {
+  tarifa: string;
+  mes: number;
+  ano: number;
+  sumaCapital: number;
+  sumaIntereses: number;
+  sumaTotal: number;
+}
+/** Fila del desglose mensual de un maestro. capital = devolucion_aplicar del primer periodo de la tarifa (0 si estaba desocupado). */
+export interface DesgloseMes {
+  jobId: string;
+  mes: number;
+  anio: number;
+  concepto: string;
+  usuarios: number;
+  capital: number;
+  intereses: number;
+  total: number;
 }

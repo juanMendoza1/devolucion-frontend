@@ -1,8 +1,9 @@
 import axios from 'axios';
+import { API_BASE_URL } from '../config';
 
 // 1. Creamos la instancia base
 export const api = axios.create({
-  baseURL: 'http://localhost:8080/api', // Asegúrate de que coincida con tu Spring Boot
+  baseURL: API_BASE_URL, // Configurable con VITE_API_URL en .env
   headers: {
     'Content-Type': 'application/json',
   },

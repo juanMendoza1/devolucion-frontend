@@ -1,6 +1,16 @@
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
-// Agregamos el icono 'Calculator' para el nuevo módulo de Reliquidación
-import { LayoutDashboard, UploadCloud, LogOut, User, Users, Command, Search, Calculator } from 'lucide-react';
+import { 
+  LayoutDashboard, 
+  UploadCloud, 
+  LogOut, 
+  User, 
+  Users, 
+  Command, 
+  Search, 
+  Calculator,
+  History ,
+  Percent
+} from 'lucide-react';
 
 export default function MainLayout() {
   const location = useLocation();
@@ -16,8 +26,10 @@ export default function MainLayout() {
     { path: '/', icon: LayoutDashboard, label: 'Dashboard' },
     { path: '/importar', icon: UploadCloud, label: 'Importaciones' },
     { path: '/visor', icon: Search, label: 'Visor de Facturas' },
+    { path: '/tasas-interes', icon: Percent, label: 'Tasas de Interés' },
     { path: '/tarifas', icon: Users, label: 'Gestión de Tarifas' },
-    { path: '/reliquidacion', icon: Calculator, label: 'Reliquidación' }, // <--- Nuevo botón integrado
+    { path: '/reliquidacion', icon: Calculator, label: 'Reliquidación' },
+    { path: '/consolidados', icon: History, label: 'Consolidados' }, 
   ];
 
   return (
@@ -31,8 +43,8 @@ export default function MainLayout() {
             <div className="bg-gray-900 p-2 rounded-xl mr-3 shadow-md">
               <Command className="h-5 w-5 text-white" />
             </div>
-            <span className="text-sm font-bold tracking-widest uppercase text-gray-900">
-              Motor Reliquidación
+            <span className="text-sm font-bold tracking-widest uppercase text-gray-900 text-center leading-tight mt-1">
+              Motor <br/> Reliquidación
             </span>
           </div>
           

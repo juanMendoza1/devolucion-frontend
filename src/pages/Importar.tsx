@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
-import { UploadCloud, FileText, CheckCircle2, Info, Loader2, Database } from 'lucide-react';
+import { UploadCloud, FileText, CheckCircle2, Info, Loader2, Database, AlertTriangle } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { uploadImportacionCSV } from '../api/facturas';
 import { useWebSocketProgress } from '../hooks/useWebSocketProgress';
+import { resetFactoryTarifas } from '../api/tarifas';
 
 const IMPORT_CONFIGS = {
   FACTURAS_ORIGINALES: {
@@ -35,42 +36,49 @@ export default function Importar() {
   const [novedad, setNovedad] = useState('');
   const [version, setVersion] = useState('');
   
-  // Estado para decirle al WebSocket a dónde conectarse (solo se llena cuando inicia la mutación)
   const [activeTopic, setActiveTopic] = useState<string | null>(null);
 
-  // MAGIA AQUI ✨ -> Usamos nuestro nuevo Custom Hook
+  // Función de limpieza global
+  const finalizarImportacion = () => {
+    setSelectedFile(null);
+    setProgreso({ porcentaje: 0, mensaje: '' });
+    setActiveTopic(null);
+    setNovedad('');
+    setVersion('');
+  };
+
   const { progreso, setProgreso } = useWebSocketProgress({
     topic: activeTopic,
+    onMessage: (data) => {
+      // 🔥 REFUERZO: Si llega el 100%, forzamos el éxito
+      if (data.porcentaje === 100) {
+        toast.success('¡Archivo procesado e importado con éxito!');
+        setTimeout(finalizarImportacion, 2000);
+      }
+    },
     onComplete: () => {
-      toast.success('Archivo cargado y procesado exitosamente');
-      setTimeout(() => {
-        setSelectedFile(null);
-        setProgreso({ porcentaje: 0, mensaje: '' });
-        setActiveTopic(null); // Desconecta el socket
-        setNovedad('');
-        setVersion('');
-      }, 2500);
+      // Se mantiene por si el hook lo lanza nativamente
+      toast.success('¡Archivo procesado e importado con éxito!');
+      setTimeout(finalizarImportacion, 2000);
     },
     onError: (msg) => {
       toast.error(msg, { duration: 6000 });
-      setProgreso({ porcentaje: 0, mensaje: '' });
-      setActiveTopic(null); // Desconecta el socket
+      finalizarImportacion();
     }
   });
 
   const uploadMutation = useMutation({
     mutationFn: async (file: File) => {
-      setProgreso({ porcentaje: 0, mensaje: 'Enviando archivo al servidor...' });
+      setProgreso({ porcentaje: 0, mensaje: 'Conectando con el servidor...' });
       const data = await uploadImportacionCSV(file, importType, novedad, version);
       return data.jobId; 
     },
     onSuccess: (jobId) => {
-      // Al tener éxito el Post HTTP, le decimos al hook que se suscriba al topic
       setActiveTopic(`/topic/import-progress/${jobId}`);
     },
     onError: () => {
       toast.error('Ocurrió un error al contactar al servidor');
-      setProgreso({ porcentaje: 0, mensaje: '' });
+      finalizarImportacion();
     }
   });
 
@@ -101,8 +109,9 @@ export default function Importar() {
   const isBusy = uploadMutation.isPending || activeTopic !== null;
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in duration-500">
+    <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in duration-500 pb-12">
       
+      {/* HEADER */}
       <div>
         <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Importar Datos</h1>
         <p className="text-gray-400 text-sm mt-1.5 font-medium">
@@ -110,6 +119,7 @@ export default function Importar() {
         </p>
       </div>
 
+      {/* TARJETA PRINCIPAL DE IMPORTACIÓN */}
       <div className="bg-white rounded-3xl p-8 lg:p-10 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-50">
         
         <div className="mb-8">
@@ -137,7 +147,11 @@ export default function Importar() {
                 </option>
               ))}
             </select>
-            {/* SVG caret (omitido para brevedad, mantenlo de tu código original) */}
+            <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4">
+              <svg className="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+              </svg>
+            </div>
           </div>
           <p className="text-sm text-gray-500 font-medium mt-2 ml-1">
             {currentConfig.description}
@@ -195,7 +209,7 @@ export default function Importar() {
             <UploadCloud className="h-10 w-10 text-gray-400" />
           </div>
           <label className="cursor-pointer text-center">
-            <span className="bg-gray-900 text-white px-6 py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-800 transition-colors shadow-md">
+            <span className="bg-gray-900 text-white px-6 py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-800 transition-colors shadow-md inline-block">
               Examinar archivo CSV
             </span>
             <input 
@@ -242,14 +256,68 @@ export default function Importar() {
                 <div className="h-2 w-full bg-gray-200 rounded-full overflow-hidden">
                   <div 
                     className="h-full bg-blue-600 transition-all duration-300 ease-out rounded-full"
-                    style={{ width: `${progreso.porcentaje}%` }}
+                    style={{ width: `${Math.max(progreso.porcentaje, 5)}%` }}
                   ></div>
                 </div>
               </div>
             )}
           </div>
         )}
+      </div>
 
+      {/* ZONA DE PELIGRO: RESET DE FÁBRICA */}
+      <div className="mt-8 bg-red-50 rounded-3xl p-8 border border-red-100 animate-in slide-in-from-bottom-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+        <div>
+          <div className="flex items-center gap-2 mb-2">
+            <AlertTriangle className="h-6 w-6 text-red-600" />
+            <h2 className="text-lg font-bold text-red-900 tracking-tight">Zona de Peligro</h2>
+          </div>
+          <p className="text-sm font-medium text-red-700/80 max-w-xl">
+            Esta acción eliminará todas las tarifas, versiones, asignaciones y reliquidaciones calculadas. 
+            <strong className="text-red-900 ml-1">Las Facturas Originales y los Aprovechadores no se verán afectados.</strong>
+          </p>
+        </div>
+        <button
+          disabled={isBusy}
+          onClick={() => {
+            toast((t) => (
+              <div className="flex flex-col gap-2">
+                <p className="font-bold text-sm text-gray-900">¿Estás absolutamente seguro?</p>
+                <p className="text-xs text-gray-500">Esto vaciará las tablas de tarifas y cálculos.</p>
+                <div className="flex gap-2 mt-2">
+                  <button 
+                    onClick={async () => {
+                      toast.dismiss(t.id);
+                      const loadingToast = toast.loading('Reseteando sistema...');
+                      try {
+                        await resetFactoryTarifas();
+                        toast.success('¡Sistema reseteado como nuevo!', { id: loadingToast });
+                        setTimeout(() => window.location.reload(), 1500);
+                      } catch (error: any) {
+                        const msg = error?.response?.status === 403
+                          ? 'Solo el administrador puede resetear el sistema.'
+                          : error?.response?.data?.error || 'Error al resetear el sistema';
+                        toast.error(msg, { id: loadingToast });
+                      }
+                    }}
+                    className="bg-red-600 text-white text-xs font-bold px-3 py-1.5 rounded-md hover:bg-red-700 transition-colors"
+                  >
+                    Sí, purgar datos
+                  </button>
+                  <button 
+                    onClick={() => toast.dismiss(t.id)}
+                    className="bg-gray-100 text-gray-700 text-xs font-bold px-3 py-1.5 rounded-md hover:bg-gray-200 transition-colors"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            ), { duration: Infinity, position: 'bottom-right' });
+          }}
+          className="bg-white border-2 border-red-200 text-red-600 font-bold px-6 py-3 rounded-xl hover:bg-red-600 hover:text-white hover:border-red-600 transition-all shadow-sm shrink-0 disabled:opacity-50"
+        >
+          Resetear Sistema
+        </button>
       </div>
     </div>
   );

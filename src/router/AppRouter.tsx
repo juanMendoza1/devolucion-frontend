@@ -5,7 +5,9 @@ import Importar from '../pages/Importar';
 import VisorFacturas from '../pages/VisorFacturas';
 import MainLayout from '../layouts/MainLayout';
 import ModuloTarifas from '../pages/Tarifas/ModuloTarifas';
-import { ModuloReliquidacion } from '../pages/Reliquidacion/ModuloReliquidacion'; // <--- Importamos la nueva vista
+import { ModuloReliquidacion } from '../pages/Reliquidacion/ModuloReliquidacion';
+import ModuloConsolidados from '../pages/Consolidados/ModuloConsolidados';
+import ModuloTasas from '../pages/Tasas/ModuloTasas';
 
 const PrivateRoute = ({ children }: { children: React.ReactNode }) => {
   const token = localStorage.getItem('jwt_token');
@@ -26,8 +28,7 @@ export const router = createBrowserRouter([
       <PrivateRoute>
         <MainLayout />
       </PrivateRoute>
-    ),
-    // Estas rutas hijas se renderizarán dentro del <Outlet /> del MainLayout
+    ),    
     children: [
       {
         index: true, 
@@ -46,8 +47,16 @@ export const router = createBrowserRouter([
         element: <ModuloTarifas />,
       },
       {
-        path: 'reliquidacion', // <--- Nuestra nueva ruta de Reliquidación
+        path: 'reliquidacion', 
         element: <ModuloReliquidacion />,
+      },
+      {
+        path :'consolidados',
+        element: <ModuloConsolidados /> 
+      },
+      {
+        path: 'tasas-interes', 
+        element: <ModuloTasas />,
       }
     ]
   }
