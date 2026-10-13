@@ -46,170 +46,172 @@ export default function TablaAuditoria() {
   };
 
   return (
-    <div className="animate-in fade-in slide-in-from-bottom-4 relative">
-      <div className="mb-6 flex flex-col md:flex-row md:items-end justify-between gap-4">
-        <div>
-          <h2 className="text-xl font-bold text-gray-900">
-            {vista === 'vigentes' ? 'Tarifas Asignadas' : 'Bitácora de Asignaciones'}
-          </h2>
-          <p className="text-sm text-gray-500 mt-1">
-            {vista === 'vigentes'
-              ? 'Vínculos vigentes entre lotes tarifarios y asociaciones, con la fecha en que se asignaron.'
-              : 'Cada asignación y retiro realizado: quién, cuándo, qué lote y cuántas tarifas.'}
-          </p>
+    <div className="relative">
+      <div className="card overflow-hidden">
+        <div className="card-header flex-col md:flex-row md:items-center items-start">
+          <div>
+            <h2 className="text-base font-semibold">
+              {vista === 'vigentes' ? 'Tarifas asignadas' : 'Bitácora de asignaciones'}
+            </h2>
+            <p className="text-sm text-slate-500 mt-0.5">
+              {vista === 'vigentes'
+                ? 'Vínculos vigentes entre tarifas y asociaciones, con la fecha en que se asignaron.'
+                : 'Cada asignación y retiro realizado: quién, cuándo, qué tarifa y cuántos registros.'}
+            </p>
+          </div>
+          <div className="inline-flex gap-1 rounded-xl border border-borde bg-white p-1 shrink-0">
+            <button onClick={() => setVista('vigentes')} className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${vista === 'vigentes' ? 'bg-petroleo-700 text-white shadow-sm' : 'text-petroleo-700 hover:bg-petroleo-50'}`}>Vigentes</button>
+            <button onClick={() => setVista('eventos')} className={`px-4 py-1.5 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${vista === 'eventos' ? 'bg-petroleo-700 text-white shadow-sm' : 'text-petroleo-700 hover:bg-petroleo-50'}`}>Bitácora</button>
+          </div>
         </div>
-        <div className="flex space-x-1 bg-gray-100 p-1 rounded-xl max-w-fit">
-          <button onClick={() => setVista('vigentes')} className={`px-4 py-2 rounded-lg text-xs font-bold ${vista === 'vigentes' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'}`}>Vigentes</button>
-          <button onClick={() => setVista('eventos')} className={`px-4 py-2 rounded-lg text-xs font-bold ${vista === 'eventos' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500'}`}>Bitácora</button>
-        </div>
-      </div>
 
-      {vista === 'vigentes' ? (
-        <div className="overflow-x-auto rounded-xl border border-gray-100 shadow-sm">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-[#F8F9FA] text-gray-400 text-xs uppercase tracking-wider">
-                <th className="px-6 py-4 font-bold border-b border-gray-100">Periodo</th>
-                <th className="px-6 py-4 font-bold border-b border-gray-100">Lote / Novedad</th>
-                <th className="px-6 py-4 font-bold border-b border-gray-100">Asociación Vinculada</th>
-                <th className="px-6 py-4 font-bold border-b border-gray-100 text-center">Registros</th>
-                <th className="px-6 py-4 font-bold border-b border-gray-100">Asignado el</th>
-                <th className="px-6 py-4 font-bold border-b border-gray-100 text-center">Acciones</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50 bg-white">
-              {isLoadingResumen ? (
-                <tr><td colSpan={6} className="px-6 py-12 text-center text-gray-400 font-bold text-sm">Cargando registros...</td></tr>
-              ) : !resumenData || resumenData.length === 0 ? (
-                <tr><td colSpan={6} className="px-6 py-12 text-center text-gray-500 font-bold">No hay tarifas asignadas a ninguna asociación.</td></tr>
-              ) : (
-                resumenData.map((registro: any, idx: number) => (
-                  <tr key={idx} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">{periodo(registro.mes, registro.anio)}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">{registro.loteNovedad}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
-                      <span className="font-bold text-gray-900">{registro.aprovechadorNit}</span> - {registro.aprovechadorNombre}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-black text-blue-600 text-center">
-                      {registro.cantidadRegistros.toLocaleString()}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-xs text-gray-600">
-                      {formatearFecha(registro.primeraAsignacion)}
-                      {registro.ultimaAsignacion && formatearFecha(registro.ultimaAsignacion) !== formatearFecha(registro.primeraAsignacion) && (
-                        <div className="text-[10px] text-gray-400">Última: {formatearFecha(registro.ultimaAsignacion)}</div>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-center">
-                      <button 
-                        onClick={() => abrirDetalle(registro)}
-                        className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-800 text-xs font-bold rounded-lg transition-colors"
-                      >
-                        VER DETALLE
-                      </button>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      ) : (
-        <div className="overflow-x-auto rounded-xl border border-gray-100 shadow-sm">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-[#F8F9FA] text-gray-400 text-xs uppercase tracking-wider">
-                <th className="px-6 py-4 font-bold border-b border-gray-100">Fecha</th>
-                <th className="px-6 py-4 font-bold border-b border-gray-100">Acción</th>
-                <th className="px-6 py-4 font-bold border-b border-gray-100">Usuario</th>
-                <th className="px-6 py-4 font-bold border-b border-gray-100">Asociación</th>
-                <th className="px-6 py-4 font-bold border-b border-gray-100">Lote / Periodo</th>
-                <th className="px-6 py-4 font-bold border-b border-gray-100 text-center">Tarifas</th>
-                <th className="px-6 py-4 font-bold border-b border-gray-100">Detalle</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50 bg-white">
-              {isLoadingEventos ? (
-                <tr><td colSpan={7} className="px-6 py-12 text-center text-gray-400 font-bold text-sm">Cargando bitácora...</td></tr>
-              ) : !eventosData || eventosData.length === 0 ? (
-                <tr><td colSpan={7} className="px-6 py-12 text-center text-gray-500 font-bold">Sin eventos registrados.</td></tr>
-              ) : (
-                eventosData.map((ev: any) => (
-                  <tr key={ev.id} className="hover:bg-gray-50 transition-colors text-sm">
-                    <td className="px-6 py-3 whitespace-nowrap text-xs text-gray-600">{formatearFecha(ev.fechaAsignacion)}</td>
-                    <td className="px-6 py-3 whitespace-nowrap">
-                      <span className={`px-2 py-1 rounded text-[10px] font-bold ${ev.accion === 'RETIRAR' ? 'bg-red-50 text-red-700' : 'bg-green-50 text-green-700'}`}>{ev.accion}</span>
-                    </td>
-                    <td className="px-6 py-3 whitespace-nowrap text-gray-700 font-medium">{ev.usuarioEmail}</td>
-                    <td className="px-6 py-3 whitespace-nowrap text-gray-600"><span className="font-bold text-gray-900">{ev.aprovechadorNit}</span> - {ev.aprovechadorNombre}</td>
-                    <td className="px-6 py-3 whitespace-nowrap text-gray-600">{ev.novedad || (ev.jobId ? ev.jobId.substring(0, 8) + '...' : 'Varios')} <span className="text-gray-400 text-xs">({periodo(ev.mes, ev.anio)})</span></td>
-                    <td className="px-6 py-3 whitespace-nowrap text-center font-bold text-gray-900">{ev.cantidadTarifas}</td>
-                    <td className="px-6 py-3 text-xs text-gray-500">{ev.detallesAdicionales}</td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-      )}
+        {vista === 'vigentes' ? (
+          <div className="overflow-x-auto">
+            <table className="table-base">
+              <thead>
+                <tr>
+                  <th>Periodo</th>
+                  <th>Tarifa / novedad</th>
+                  <th>Asociación vinculada</th>
+                  <th className="text-right">Registros</th>
+                  <th>Asignado el</th>
+                  <th className="text-right">Acciones</th>
+                </tr>
+              </thead>
+              <tbody>
+                {isLoadingResumen ? (
+                  <tr><td colSpan={6} className="py-12 text-center text-slate-400"><span className="spinner mr-2" /> Cargando registros...</td></tr>
+                ) : !resumenData || resumenData.length === 0 ? (
+                  <tr><td colSpan={6} className="py-12 text-center text-slate-400">No hay tarifas asignadas a ninguna asociación.</td></tr>
+                ) : (
+                  resumenData.map((registro: any, idx: number) => (
+                    <tr key={idx}>
+                      <td className="whitespace-nowrap font-semibold text-petroleo-900 tabular-nums">{periodo(registro.mes, registro.anio)}</td>
+                      <td className="whitespace-nowrap">{registro.loteNovedad}</td>
+                      <td className="whitespace-nowrap">
+                        <span className="font-mono font-semibold text-petroleo-900">{registro.aprovechadorNit}</span> - {registro.aprovechadorNombre}
+                      </td>
+                      <td className="whitespace-nowrap text-right font-semibold text-petroleo-700 tabular-nums">
+                        {registro.cantidadRegistros.toLocaleString()}
+                      </td>
+                      <td className="whitespace-nowrap text-xs tabular-nums">
+                        {formatearFecha(registro.primeraAsignacion)}
+                        {registro.ultimaAsignacion && formatearFecha(registro.ultimaAsignacion) !== formatearFecha(registro.primeraAsignacion) && (
+                          <div className="text-[11px] text-slate-400">Última: {formatearFecha(registro.ultimaAsignacion)}</div>
+                        )}
+                      </td>
+                      <td className="whitespace-nowrap text-right">
+                        <button 
+                          onClick={() => abrirDetalle(registro)}
+                          className="btn-link"
+                        >
+                          Ver detalle
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="table-base">
+              <thead>
+                <tr>
+                  <th>Fecha</th>
+                  <th>Acción</th>
+                  <th>Usuario</th>
+                  <th>Asociación</th>
+                  <th>Tarifa / periodo</th>
+                  <th className="text-right">Tarifas</th>
+                  <th>Detalle</th>
+                </tr>
+              </thead>
+              <tbody>
+                {isLoadingEventos ? (
+                  <tr><td colSpan={7} className="py-12 text-center text-slate-400"><span className="spinner mr-2" /> Cargando bitácora...</td></tr>
+                ) : !eventosData || eventosData.length === 0 ? (
+                  <tr><td colSpan={7} className="py-12 text-center text-slate-400">Sin eventos registrados.</td></tr>
+                ) : (
+                  eventosData.map((ev: any) => (
+                    <tr key={ev.id}>
+                      <td className="whitespace-nowrap text-xs tabular-nums">{formatearFecha(ev.fechaAsignacion)}</td>
+                      <td className="whitespace-nowrap">
+                        <span className={ev.accion === 'RETIRAR' ? 'badge-error' : 'badge-ok'}>{ev.accion}</span>
+                      </td>
+                      <td className="whitespace-nowrap font-medium">{ev.usuarioEmail}</td>
+                      <td className="whitespace-nowrap"><span className="font-mono font-semibold text-petroleo-900">{ev.aprovechadorNit}</span> - {ev.aprovechadorNombre}</td>
+                      <td className="whitespace-nowrap">{ev.novedad || (ev.jobId ? ev.jobId.substring(0, 8) + '...' : 'Varios')} <span className="text-slate-400 text-xs">({periodo(ev.mes, ev.anio)})</span></td>
+                      <td className="whitespace-nowrap text-right font-semibold text-petroleo-900 tabular-nums">{ev.cantidadTarifas}</td>
+                      <td className="text-xs text-slate-500">{ev.detallesAdicionales}</td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
 
       {/* MODAL CON LA ESTRUCTURA DE devol_tarifas */}
       {modalOpen && registroSeleccionado && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-7xl overflow-hidden flex flex-col h-[85vh] animate-in zoom-in-95">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-petroleo-950/60 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-elevada w-full max-w-7xl overflow-hidden flex flex-col h-[85vh]">
             
             {/* HEADER MODAL */}
-            <div className="px-8 py-5 border-b border-gray-100 flex justify-between items-center bg-gray-50 shrink-0">
+            <div className="card-header bg-petroleo-50 shrink-0">
               <div>
-                <h3 className="text-lg font-bold text-gray-900">Detalle de Registros Asignados</h3>
-                <p className="text-xs font-medium text-blue-700 mt-1 uppercase">ASOCIACIÓN: {registroSeleccionado.aprovechadorNombre}</p>
+                <h3 className="text-lg font-bold">Detalle de registros asignados</h3>
+                <p className="text-xs font-semibold text-petroleo-600 mt-1 uppercase">Asociación: {registroSeleccionado.aprovechadorNombre}</p>
               </div>
               <button 
                 onClick={() => setModalOpen(false)} 
-                className="px-4 py-2 bg-gray-200 hover:bg-gray-300 text-gray-800 text-sm font-bold rounded-xl transition-colors"
+                className="btn-secondary btn-sm"
               >
                 Cerrar
               </button>
             </div>
             
             {/* TABLA DEL MODAL */}
-            <div className="flex-1 overflow-auto bg-white p-4">
-              <table className="w-full text-left border-collapse min-w-[1300px] text-xs">
-                <thead>
-                  <tr className="bg-[#F8F9FA] text-gray-500 uppercase tracking-wider sticky top-0 shadow-sm">
-                    <th className="px-4 py-3 font-bold border-b border-gray-100">Periodo</th>
-                    <th className="px-4 py-3 font-bold border-b border-gray-100 text-center">Estrato</th>
-                    <th className="px-4 py-3 font-bold border-b border-gray-100">Concepto</th>
-                    <th className="px-4 py-3 font-bold border-b border-gray-100 text-right">Aplicado</th>
-                    <th className="px-4 py-3 font-bold border-b border-gray-100 text-right">Ajustado</th>
-                    <th className="px-4 py-3 font-bold border-b border-gray-100 text-right">Devolución</th>
-                    <th className="px-4 py-3 font-bold border-b border-gray-100 text-center">% Subcon</th>
-                    <th className="px-4 py-3 font-bold border-b border-gray-100 text-right">Subcon</th>
-                    <th className="px-4 py-3 font-bold border-b border-gray-100 text-right">Dev. Aplicar</th>
-                    <th className="px-4 py-3 font-bold border-b border-gray-100">Liquidación</th>
-                    <th className="px-4 py-3 font-bold border-b border-gray-100 text-center">ESP</th>
-                    <th className="px-4 py-3 font-bold border-b border-gray-100">Asignado</th>
+            <div className="flex-1 overflow-auto bg-white">
+              <table className="table-base text-xs min-w-[1300px]">
+                <thead className="sticky top-0">
+                  <tr>
+                    <th>Periodo</th>
+                    <th className="text-center">Estrato</th>
+                    <th>Concepto</th>
+                    <th className="text-right">Aplicado</th>
+                    <th className="text-right">Ajustado</th>
+                    <th className="text-right">Devolución</th>
+                    <th className="text-right">% Subcon</th>
+                    <th className="text-right">Subcon</th>
+                    <th className="text-right">Dev. aplicar</th>
+                    <th>Liquidación</th>
+                    <th className="text-center">ESP</th>
+                    <th>Asignado</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-50">
+                <tbody>
                   {isLoadingDetalle ? (
-                    <tr><td colSpan={12} className="px-6 py-12 text-center text-gray-400 font-bold text-sm">Cargando registros...</td></tr>
+                    <tr><td colSpan={12} className="py-12 text-center text-slate-400 text-sm"><span className="spinner mr-2" /> Cargando registros...</td></tr>
                   ) : (
                     detalleData?.map((reg: any) => (
-                      <tr key={reg.id} className="hover:bg-gray-50 transition-colors">
-                        <td className="px-4 py-3 font-bold text-gray-900">{reg.mes}/{reg.anio}</td>
-                        <td className="px-4 py-3 text-center text-gray-600 font-medium">{reg.estrato}</td>
-                        <td className="px-4 py-3 text-gray-600 font-bold">{reg.concepto}</td>
-                        <td className="px-4 py-3 text-right text-gray-500">${reg.aplicado?.toLocaleString('es-CO')}</td>
-                        <td className="px-4 py-3 text-right font-bold text-gray-700">${reg.ajustado?.toLocaleString('es-CO')}</td>
-                        <td className="px-4 py-3 text-right text-gray-500">${reg.devolucion?.toLocaleString('es-CO')}</td>
-                        <td className="px-4 py-3 text-center font-mono text-gray-400">{reg.porsubcon}%</td>
-                        <td className="px-4 py-3 text-right text-blue-600 font-medium">${reg.subcon?.toLocaleString('es-CO')}</td>
-                        <td className="px-4 py-3 text-right font-black text-black">${reg.devolucionAplicar?.toLocaleString('es-CO')}</td>
-                        <td className="px-4 py-3 text-gray-500">{reg.liquidacion}</td>
-                        <td className="px-4 py-3 text-center text-gray-500">{reg.esp}</td>
-                        <td className="px-4 py-3 text-gray-500 whitespace-nowrap">
+                      <tr key={reg.id}>
+                        <td className="font-semibold text-petroleo-900 tabular-nums whitespace-nowrap">{reg.mes}/{reg.anio}</td>
+                        <td className="text-center tabular-nums">{reg.estrato}</td>
+                        <td className="font-semibold text-slate-600">{reg.concepto}</td>
+                        <td className="text-right tabular-nums whitespace-nowrap text-slate-500">${reg.aplicado?.toLocaleString('es-CO')}</td>
+                        <td className="text-right tabular-nums whitespace-nowrap font-semibold">${reg.ajustado?.toLocaleString('es-CO')}</td>
+                        <td className="text-right tabular-nums whitespace-nowrap text-slate-500">${reg.devolucion?.toLocaleString('es-CO')}</td>
+                        <td className="text-right tabular-nums whitespace-nowrap font-mono text-slate-400">{reg.porsubcon}%</td>
+                        <td className="text-right tabular-nums whitespace-nowrap text-petroleo-600">${reg.subcon?.toLocaleString('es-CO')}</td>
+                        <td className="text-right tabular-nums whitespace-nowrap font-bold text-petroleo-900">${reg.devolucionAplicar?.toLocaleString('es-CO')}</td>
+                        <td className="text-slate-500">{reg.liquidacion}</td>
+                        <td className="text-center text-slate-500">{reg.esp}</td>
+                        <td className="text-slate-500 whitespace-nowrap tabular-nums">
                           {formatearFecha(reg.fechaAsignacion)}
-                          <div className="text-[10px] text-gray-400">{reg.usuarioAsignacion}</div>
+                          <div className="text-[11px] text-slate-400">{reg.usuarioAsignacion}</div>
                         </td>
                       </tr>
                     ))

@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import toast from 'react-hot-toast';
 import { getTarifasPorLote, getAprovechadoresActivos, asignarAprovechador, retirarAprovechador } from '../../../api/tarifas';
+import { confirmar } from '../../../utils/confirmar';
 
 interface DetalleTarifaProps {
   tarifa: { jobId: string; mes: number; anio: number };
@@ -80,7 +81,7 @@ export default function DetalleTarifa({ tarifa, onVolver }: DetalleTarifaProps) 
     }
   });
 
-  // 🔥 LÓGICA DE ASIGNACIÓN (Envía los arrays completos al backend)
+  // LÓGICA DE ASIGNACIÓN (Envía los arrays completos al backend)
   const handleAsignarVisualizados = () => {
     if (selectedAprovechadores.length === 0) return toast.error('Selecciona al menos una ASOCIACIÓN.');
     if (!registrosData?.content || registrosData.content.length === 0) return toast.error('No hay registros en esta vista.');
@@ -93,10 +94,16 @@ export default function DetalleTarifa({ tarifa, onVolver }: DetalleTarifaProps) 
     });
   };
 
-  const handleRetirarVisualizados = () => {
+  const handleRetirarVisualizados = async () => {
     if (selectedAprovechadores.length === 0) return toast.error('Selecciona al menos una ASOCIACIÓN.');
     if (!registrosData?.content || registrosData.content.length === 0) return toast.error('No hay registros en esta vista.');
-    if (!window.confirm('¿Retirar las asociaciones seleccionadas de los registros visibles? Quedará registrado en el histórico.')) return;
+    const ok = await confirmar({
+      titulo: '¿Retirar las asociaciones seleccionadas?',
+      detalle: 'Se retiran de los registros visibles y queda registrado en el histórico.',
+      textoConfirmar: 'Retirar',
+      peligroso: true,
+    });
+    if (!ok) return;
 
     retiroMutation.mutate({
       aprovechadorIds: selectedAprovechadores,
@@ -112,147 +119,166 @@ export default function DetalleTarifa({ tarifa, onVolver }: DetalleTarifaProps) 
     if (selectedAprovechadores.length === 0) return "-- Seleccionar Asociaciones --";
     if (selectedAprovechadores.length === 1) {
       const ap = aprovechadores?.find((a: any) => a.id === selectedAprovechadores[0]);
-      return ap ? ap.nombreRazonSocial : "1 seleccionada";
+      return ap ? `${ap.nit} - ${ap.nombre}` : "1 seleccionada";
     }
     return `${selectedAprovechadores.length} asociaciones seleccionadas`;
   };
 
   return (
-    <div className="flex flex-col h-full animate-in fade-in slide-in-from-right-4">
+    <div className="flex flex-col gap-6">
       
       {/* CABECERA Y BOTÓN VOLVER */}
-      <div className="flex items-center space-x-4 mb-6">
-        <button onClick={onVolver} className="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-bold rounded-lg transition-colors">
+      <div className="flex flex-wrap items-center gap-4">
+        <button onClick={onVolver} className="btn-secondary btn-sm">
           Volver
         </button>
         <div>
-          <h2 className="text-xl font-bold text-gray-900">
-            Registros del Periodo {String(tarifa.mes).padStart(2, '0')} / {tarifa.anio}
+          <h2 className="text-lg font-bold">
+            Registros del periodo {String(tarifa.mes).padStart(2, '0')} / {tarifa.anio}
           </h2>
-          <p className="text-xs text-gray-400 font-mono mt-0.5">Ref: {tarifa.jobId}</p>
+          <p className="text-xs text-slate-400 font-mono mt-0.5">Ref: {tarifa.jobId}</p>
         </div>
       </div>
 
-      {/* BARRA DE ASIGNACIÓN PRO */}
-      <div className="mb-6 p-4 bg-gray-50 rounded-2xl flex items-center justify-between shadow-md border border-gray-200 gap-4">
-        <div className="flex items-center space-x-3 w-full">
-          
-          {/* SELECT MÚLTIPLE PERSONALIZADO */}
-          <div className="relative flex-1" ref={dropdownRef}>
-            <div 
-              onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-              className="w-full bg-white border border-gray-200 text-gray-900 text-sm font-bold rounded-xl px-5 py-3 outline-none focus:border-gray-900 focus:ring-1 focus:ring-gray-900 transition-all cursor-pointer shadow-sm flex justify-between items-center"
-            >
-              <span className="truncate">{getSelectText()}</span>
-              <svg className={`h-4 w-4 text-gray-400 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-              </svg>
-            </div>
-
-            {isDropdownOpen && (
-              <div className="absolute z-20 w-full mt-2 bg-white border border-gray-200 rounded-xl shadow-xl max-h-64 overflow-y-auto animate-in fade-in slide-in-from-top-2">
-                {aprovechadores?.map((ap: any) => (
-                  <label key={ap.id} className="flex items-center px-5 py-3 hover:bg-gray-50 cursor-pointer border-b border-gray-50 last:border-0 transition-colors">
-                    <input 
-                      type="checkbox" 
-                      checked={selectedAprovechadores.includes(ap.id)}
-                      onChange={() => toggleAprovechador(ap.id)}
-                      className="mr-3 h-4 w-4 text-black border-gray-300 rounded focus:ring-black cursor-pointer"
-                    />
-                    <div className="flex flex-col">
-                      <span className="text-sm font-bold text-gray-800 leading-none mb-1">{ap.nombreRazonSocial}</span>
-                      <span className="text-[10px] text-gray-400 font-mono">NIT: {ap.nit}</span>
-                    </div>
-                  </label>
-                ))}
+      {/* BARRA DE ASIGNACIÓN */}
+      <div className="card">
+        <div className="card-body py-5">
+          <p className="label">Asociaciones a vincular o retirar de los registros visibles</p>
+          <div className="flex flex-col lg:flex-row lg:items-center gap-3 w-full">
+            
+            {/* SELECT MÚLTIPLE PERSONALIZADO */}
+            <div className="relative flex-1 min-w-0" ref={dropdownRef}>
+              <div 
+                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                className="input cursor-pointer flex justify-between items-center gap-3 font-medium"
+              >
+                <span className="truncate">{getSelectText()}</span>
+                <span className="shrink-0 text-xs font-semibold text-petroleo-600">{isDropdownOpen ? 'Ocultar' : 'Mostrar'}</span>
               </div>
-            )}
+
+              {isDropdownOpen && (
+                <div className="absolute z-20 w-full mt-2 bg-white border border-borde rounded-xl shadow-elevada max-h-72 overflow-y-auto">
+                  {(!aprovechadores || aprovechadores.length === 0) && (
+                    <div className="px-5 py-4 text-sm text-slate-500">
+                      No hay aprovechadores activos. Créelos en el módulo Aprovechadores.
+                    </div>
+                  )}
+                  {aprovechadores && aprovechadores.length > 0 && (
+                    <div className="grid grid-cols-[1rem_3rem_9rem_1fr] gap-3 px-5 py-2 bg-petroleo-50 text-[11px] font-semibold uppercase tracking-wide text-petroleo-700 border-b border-borde sticky top-0">
+                      <span />
+                      <span>Id</span>
+                      <span>NIT</span>
+                      <span>Nombre</span>
+                    </div>
+                  )}
+                  {aprovechadores?.map((ap: any) => (
+                    <label key={ap.id} className={`grid grid-cols-[1rem_3rem_9rem_1fr] gap-3 items-center px-5 py-2.5 cursor-pointer border-b border-slate-100 last:border-0 text-sm transition-colors ${selectedAprovechadores.includes(ap.id) ? 'bg-verde-50' : 'hover:bg-petroleo-50/60'}`}>
+                      <input 
+                        type="checkbox" 
+                        checked={selectedAprovechadores.includes(ap.id)}
+                        onChange={() => toggleAprovechador(ap.id)}
+                        className="h-4 w-4 accent-petroleo-700 cursor-pointer"
+                      />
+                      <span className="font-mono text-slate-400">#{ap.id}</span>
+                      <span className="font-mono text-slate-600 truncate">{ap.nit}</span>
+                      <span className="font-semibold text-petroleo-900 truncate">{ap.nombre}</span>
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
+            
+            <div className="flex gap-3 shrink-0">
+              <button 
+                onClick={handleAsignarVisualizados} 
+                disabled={isPending || registrosEnVista === 0 || selectedAprovechadores.length === 0} 
+                className="btn-success whitespace-nowrap"
+              >
+                {asignacionMutation.isPending ? <><span className="spinner" /> Procesando...</> : `Vincular ${registrosEnVista} registros`}
+              </button>
+              <button 
+                onClick={handleRetirarVisualizados} 
+                disabled={isPending || registrosEnVista === 0 || selectedAprovechadores.length === 0} 
+                className="btn-danger whitespace-nowrap"
+              >
+                {retiroMutation.isPending ? <><span className="spinner" /> Procesando...</> : 'Retirar'}
+              </button>
+            </div>
           </div>
-          
-          <button 
-            onClick={handleAsignarVisualizados} 
-            disabled={isPending || registrosEnVista === 0 || selectedAprovechadores.length === 0} 
-            className="bg-black text-white px-8 py-3 rounded-xl text-sm font-bold hover:bg-gray-800 disabled:opacity-50 transition-colors whitespace-nowrap shadow-sm"
-          >
-            {asignacionMutation.isPending ? 'Procesando...' : `Vincular ${registrosEnVista} Registros`}
-          </button>
-          <button 
-            onClick={handleRetirarVisualizados} 
-            disabled={isPending || registrosEnVista === 0 || selectedAprovechadores.length === 0} 
-            className="bg-white border border-gray-300 text-gray-700 px-6 py-3 rounded-xl text-sm font-bold hover:border-red-400 hover:text-red-600 disabled:opacity-50 transition-colors whitespace-nowrap shadow-sm"
-          >
-            {retiroMutation.isPending ? 'Procesando...' : 'Retirar'}
-          </button>
         </div>
       </div>
 
       {/* TABLA COMPLETA DE ESTRUCTURA devol_tarifas */}
-      <div className="flex-1 overflow-x-auto rounded-xl border border-gray-100 bg-white flex flex-col">
-        <table className="w-full text-left border-collapse min-w-[1200px] text-xs">
-          <thead>
-            <tr className="bg-[#F8F9FA] text-gray-500 uppercase tracking-wider">
-              <th className="px-4 py-3 font-bold border-b border-gray-100">Periodo</th>
-              <th className="px-4 py-3 font-bold border-b border-gray-100 text-center">Estrato</th>
-              <th className="px-4 py-3 font-bold border-b border-gray-100">Concepto</th>
-              <th className="px-4 py-3 font-bold border-b border-gray-100 text-right">Aplicado</th>
-              <th className="px-4 py-3 font-bold border-b border-gray-100 text-right">Ajustado</th>
-              <th className="px-4 py-3 font-bold border-b border-gray-100 text-right">Devolución</th>
-              <th className="px-4 py-3 font-bold border-b border-gray-100 text-center">% Subcon</th>
-              <th className="px-4 py-3 font-bold border-b border-gray-100 text-right">Subcon</th>
-              <th className="px-4 py-3 font-bold border-b border-gray-100 text-right">Dev. Aplicar</th>
-              <th className="px-4 py-3 font-bold border-b border-gray-100">Liquidación</th>
-              <th className="px-4 py-3 font-bold border-b border-gray-100 text-center">ESP</th>
-              <th className="px-4 py-3 font-bold border-b border-gray-100">Asociación</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-50">
-            {isLoadingRegistros ? (
-              <tr><td colSpan={12} className="px-6 py-12 text-center text-gray-400 font-bold text-sm">Cargando registros...</td></tr>
-            ) : (
-              registrosData?.content?.map((reg: any) => (
-                <tr key={reg.id} className="hover:bg-gray-50/50 transition-colors">
-                  <td className="px-4 py-3 font-bold text-gray-900">{reg.mes}/{reg.anio}</td>
-                  <td className="px-4 py-3 text-center text-gray-600 font-medium">{reg.estrato}</td>
-                  <td className="px-4 py-3 text-gray-600 font-bold">{reg.concepto}</td>
-                  <td className="px-4 py-3 text-right text-gray-500">${reg.aplicado?.toLocaleString('es-CO')}</td>
-                  <td className="px-4 py-3 text-right font-bold text-gray-700">${reg.ajustado?.toLocaleString('es-CO')}</td>
-                  <td className="px-4 py-3 text-right text-gray-500">${reg.devolucion?.toLocaleString('es-CO')}</td>
-                  <td className="px-4 py-3 text-center font-mono text-gray-400">{reg.porsubcon}%</td>
-                  <td className="px-4 py-3 text-right text-blue-600 font-medium">${reg.subcon?.toLocaleString('es-CO')}</td>
-                  <td className="px-4 py-3 text-right font-black text-black">${reg.devolucionAplicar?.toLocaleString('es-CO')}</td>
-                  <td className="px-4 py-3 text-gray-500">{reg.liquidacion}</td>
-                  <td className="px-4 py-3 text-center text-gray-500">{reg.esp}</td>
-                  
-                  {/* 🔥 AHORA RENDERIZAMOS MÚLTIPLES ASOCIACIONES (MANY-TO-MANY) */}
-                  <td className="px-4 py-3">
-                    {reg.aprovechadores && reg.aprovechadores.length > 0 ? (
-                      <div className="flex flex-wrap gap-1">
-                        {reg.aprovechadores.map((ap: any) => (
-                          <span key={ap.id} className="inline-flex px-2 py-1 rounded bg-blue-50 text-blue-700 font-bold text-[10px]">
-                            {ap.nombreRazonSocial}
-                          </span>
-                        ))}
-                      </div>
-                    ) : (
-                      <span className="inline-flex px-2 py-1 rounded bg-amber-50 text-amber-700 font-bold text-[10px]">Sin asignar</span>
-                    )}
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+      <div className="card overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="table-base text-xs min-w-[1200px]">
+            <thead>
+              <tr>
+                <th>Periodo</th>
+                <th className="text-center">Estrato</th>
+                <th>Concepto</th>
+                <th className="text-right">Aplicado</th>
+                <th className="text-right">Ajustado</th>
+                <th className="text-right">Devolución</th>
+                <th className="text-right">% Subcon</th>
+                <th className="text-right">Subcon</th>
+                <th className="text-right">Dev. aplicar</th>
+                <th>Liquidación</th>
+                <th className="text-center">ESP</th>
+                <th>Asociación</th>
+              </tr>
+            </thead>
+            <tbody>
+              {isLoadingRegistros ? (
+                <tr><td colSpan={12} className="py-12 text-center text-slate-400 text-sm"><span className="spinner mr-2" /> Cargando registros...</td></tr>
+              ) : !registrosData?.content || registrosData.content.length === 0 ? (
+                <tr><td colSpan={12} className="py-12 text-center text-slate-400 text-sm">Esta tarifa no tiene registros.</td></tr>
+              ) : (
+                registrosData?.content?.map((reg: any) => (
+                  <tr key={reg.id}>
+                    <td className="font-semibold text-petroleo-900 tabular-nums whitespace-nowrap">{reg.mes}/{reg.anio}</td>
+                    <td className="text-center tabular-nums">{reg.estrato}</td>
+                    <td className="font-semibold text-slate-600">{reg.concepto}</td>
+                    <td className="text-right tabular-nums whitespace-nowrap text-slate-500">${reg.aplicado?.toLocaleString('es-CO')}</td>
+                    <td className="text-right tabular-nums whitespace-nowrap font-semibold">${reg.ajustado?.toLocaleString('es-CO')}</td>
+                    <td className="text-right tabular-nums whitespace-nowrap text-slate-500">${reg.devolucion?.toLocaleString('es-CO')}</td>
+                    <td className="text-right tabular-nums whitespace-nowrap font-mono text-slate-400">{reg.porsubcon}%</td>
+                    <td className="text-right tabular-nums whitespace-nowrap text-petroleo-600">${reg.subcon?.toLocaleString('es-CO')}</td>
+                    <td className="text-right tabular-nums whitespace-nowrap font-bold text-petroleo-900">${reg.devolucionAplicar?.toLocaleString('es-CO')}</td>
+                    <td className="text-slate-500">{reg.liquidacion}</td>
+                    <td className="text-center text-slate-500">{reg.esp}</td>
+                    
+                    {/* MÚLTIPLES ASOCIACIONES (MANY-TO-MANY) */}
+                    <td>
+                      {reg.aprovechadores && reg.aprovechadores.length > 0 ? (
+                        <div className="flex flex-wrap gap-1">
+                          {reg.aprovechadores.map((ap: any) => (
+                            <span key={ap.id} className="badge-info">
+                              {ap.nombreRazonSocial}
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="badge-warn">Sin asignar</span>
+                      )}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
 
         {/* PAGINACIÓN */}
         {registrosData && (
-          <div className="mt-auto flex flex-wrap items-center justify-between border-t border-gray-100 bg-white px-6 py-4 gap-4">
-            <div className="text-sm text-gray-500">
-              Página <span className="font-bold text-gray-900">{registrosData.number + 1}</span> de <span className="font-bold text-gray-900">{registrosData.totalPages}</span> 
+          <div className="flex flex-wrap items-center justify-between border-t border-borde px-6 py-4 gap-4">
+            <div className="text-sm text-slate-500 tabular-nums">
+              Página <span className="font-semibold text-petroleo-900">{registrosData.number + 1}</span> de <span className="font-semibold text-petroleo-900">{registrosData.totalPages}</span> 
               <span className="ml-2">({registrosData.totalElements} registros totales)</span>
             </div>
-            <div className="flex space-x-2">
-              <button onClick={() => setPage((p) => Math.max(0, p - 1))} disabled={registrosData.first} className="px-4 py-2 border border-gray-200 rounded-lg text-sm font-bold text-gray-700 hover:bg-gray-50 disabled:opacity-50">Anterior</button>
-              <button onClick={() => setPage((p) => p + 1)} disabled={registrosData.last} className="px-4 py-2 border border-gray-200 rounded-lg text-sm font-bold text-gray-700 hover:bg-gray-50 disabled:opacity-50">Siguiente</button>
+            <div className="flex gap-2">
+              <button onClick={() => setPage((p) => Math.max(0, p - 1))} disabled={registrosData.first} className="btn-secondary btn-sm">Anterior</button>
+              <button onClick={() => setPage((p) => p + 1)} disabled={registrosData.last} className="btn-secondary btn-sm">Siguiente</button>
             </div>
           </div>
         )}

@@ -38,13 +38,13 @@ export const uploadImportacionCSV = async (
   return response.data;
 };
 
-// 🔥 NUEVO: Obtiene la lista de periodos únicos (mes/año) para el Select del frontend
+// Obtiene la lista de periodos únicos (mes/año) para el Select del frontend
 export const getPeriodosFacturas = async () => {
   const response = await api.get('/facturas/periodos');
   return response.data;
 };
 
-// 🔥 ACTUALIZADO: Agregamos mes y anio a la interfaz de filtros
+// Agregamos mes y anio a la interfaz de filtros
 export const getFacturas = async (
   page: number = 0, 
   size: number = 10, 

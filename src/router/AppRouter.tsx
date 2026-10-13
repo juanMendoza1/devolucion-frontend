@@ -8,6 +8,8 @@ import ModuloTarifas from '../pages/Tarifas/ModuloTarifas';
 import { ModuloReliquidacion } from '../pages/Reliquidacion/ModuloReliquidacion';
 import ModuloConsolidados from '../pages/Consolidados/ModuloConsolidados';
 import ModuloTasas from '../pages/Tasas/ModuloTasas';
+import ModuloAprovechadores from '../pages/Aprovechadores/ModuloAprovechadores';
+import ModuloReportes from '../pages/Reportes/ModuloReportes';
 
 const PrivateRoute = ({ children }: { children: React.ReactNode }) => {
   const token = localStorage.getItem('jwt_token');
@@ -57,6 +59,14 @@ export const router = createBrowserRouter([
       {
         path: 'tasas-interes', 
         element: <ModuloTasas />,
+      },
+      {
+        path: 'aprovechadores',
+        element: <ModuloAprovechadores />,
+      },
+      {
+        path: 'reportes',
+        element: <ModuloReportes />,
       }
     ]
   }

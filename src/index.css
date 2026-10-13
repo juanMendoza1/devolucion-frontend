@@ -1,1 +1,187 @@
 @import "tailwindcss";
+
+/* =====================================================================
+   Tema "sobrio corporativo": azul petróleo + verde, tipografía limpia,
+   tarjetas con sombra suave. Sin iconos: la jerarquía se da con color,
+   peso tipográfico y espaciado.
+   ===================================================================== */
+
+@theme {
+  --font-sans: "Inter", "Segoe UI", "Helvetica Neue", Arial, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
+
+  /* Azul petróleo (marca) */
+  --color-petroleo-50: #eef6f8;
+  --color-petroleo-100: #d5e8ee;
+  --color-petroleo-200: #aed2dd;
+  --color-petroleo-300: #7db5c6;
+  --color-petroleo-400: #4b92a8;
+  --color-petroleo-500: #2f768d;
+  --color-petroleo-600: #1f5f75;
+  --color-petroleo-700: #164d60;
+  --color-petroleo-800: #103d4d;
+  --color-petroleo-900: #0b2e3b;
+  --color-petroleo-950: #071f28;
+
+  /* Verde (acento / acciones positivas) */
+  --color-verde-50: #edf8f3;
+  --color-verde-100: #d3efe2;
+  --color-verde-200: #a8dfc6;
+  --color-verde-300: #73c9a4;
+  --color-verde-400: #44ae84;
+  --color-verde-500: #2a946c;
+  --color-verde-600: #1e7857;
+  --color-verde-700: #196047;
+  --color-verde-800: #164d3a;
+  --color-verde-900: #123f31;
+
+  /* Superficies */
+  --color-fondo: #f2f5f7;
+  --color-borde: #dde5ea;
+
+  --shadow-suave: 0 1px 2px rgb(11 46 59 / 0.04), 0 4px 16px rgb(11 46 59 / 0.06);
+  --shadow-elevada: 0 2px 4px rgb(11 46 59 / 0.05), 0 12px 32px rgb(11 46 59 / 0.10);
+}
+
+@layer base {
+  html,
+  body {
+    @apply bg-fondo text-slate-800 antialiased;
+    font-family: var(--font-sans);
+  }
+
+  h1,
+  h2,
+  h3 {
+    @apply text-petroleo-900 tracking-tight;
+  }
+
+  ::selection {
+    @apply bg-verde-200 text-petroleo-900;
+  }
+}
+
+@layer components {
+  /* ---------- Contenedores ---------- */
+  .card,
+  .kpi {
+    @apply bg-white rounded-2xl border border-borde shadow-suave;
+  }
+  .card-header {
+    @apply px-6 py-4 border-b border-borde flex items-center justify-between gap-4;
+  }
+  .card-body {
+    @apply p-6;
+  }
+
+  /* ---------- Encabezado de página ---------- */
+  .page-header {
+    @apply mb-8 flex flex-wrap items-end justify-between gap-4;
+  }
+  .page-kicker {
+    @apply text-xs font-semibold uppercase tracking-[0.18em] text-verde-600;
+  }
+  .page-title {
+    @apply mt-1 text-2xl font-bold text-petroleo-900;
+  }
+  .page-subtitle {
+    @apply mt-1 text-sm text-slate-500;
+  }
+
+  /* ---------- Botones ---------- */
+  .btn,
+  .btn-primary,
+  .btn-success,
+  .btn-secondary,
+  .btn-danger {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-semibold
+      transition-colors duration-150 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed
+      focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-verde-400 focus-visible:ring-offset-2;
+  }
+  .btn-primary {
+    @apply bg-petroleo-700 text-white hover:bg-petroleo-800 shadow-sm;
+  }
+  .btn-success {
+    @apply bg-verde-600 text-white hover:bg-verde-700 shadow-sm;
+  }
+  .btn-secondary {
+    @apply bg-white text-petroleo-800 border border-borde hover:bg-petroleo-50 hover:border-petroleo-200;
+  }
+  .btn-danger {
+    @apply bg-white text-red-700 border border-red-200 hover:bg-red-50 hover:border-red-300;
+  }
+  .btn-link {
+    @apply text-sm font-semibold text-petroleo-600 hover:text-petroleo-800 underline-offset-4 hover:underline cursor-pointer
+      disabled:opacity-50 disabled:no-underline disabled:cursor-not-allowed;
+  }
+  .btn-sm {
+    @apply px-3 py-1.5 text-xs rounded-lg;
+  }
+
+  /* ---------- Formularios ---------- */
+  .label {
+    @apply block text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1.5;
+  }
+  .input {
+    @apply w-full rounded-xl border border-borde bg-white px-4 py-2.5 text-sm text-slate-800
+      placeholder:text-slate-400 outline-none transition
+      focus:border-petroleo-400 focus:ring-2 focus:ring-petroleo-100;
+  }
+
+  /* ---------- Tablas ---------- */
+  .table-base {
+    @apply w-full text-left text-sm border-collapse;
+  }
+  .table-base thead tr {
+    @apply bg-petroleo-50;
+  }
+  .table-base th {
+    @apply px-4 py-3 text-xs font-semibold uppercase tracking-wide text-petroleo-700 border-b border-borde whitespace-nowrap;
+  }
+  .table-base td {
+    @apply px-4 py-3 border-b border-slate-100 text-slate-700;
+  }
+  .table-base tbody tr {
+    @apply transition-colors hover:bg-petroleo-50/50;
+  }
+
+  /* ---------- Etiquetas ---------- */
+  .badge-ok,
+  .badge-off,
+  .badge-info,
+  .badge-warn,
+  .badge-error {
+    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold whitespace-nowrap;
+  }
+  .badge-ok {
+    @apply bg-verde-100 text-verde-800;
+  }
+  .badge-off {
+    @apply bg-slate-100 text-slate-500;
+  }
+  .badge-info {
+    @apply bg-petroleo-100 text-petroleo-800;
+  }
+  .badge-warn {
+    @apply bg-amber-100 text-amber-800;
+  }
+  .badge-error {
+    @apply bg-red-100 text-red-700;
+  }
+
+  /* ---------- Indicador de carga (sin iconos) ---------- */
+  .spinner {
+    @apply inline-block h-4 w-4 rounded-full border-2 border-current border-r-transparent animate-spin align-[-2px];
+  }
+
+  /* ---------- Indicadores / KPIs ---------- */
+  .kpi {
+    @apply p-5 border-l-4 border-l-petroleo-500;
+  }
+  .kpi-label {
+    @apply text-xs font-semibold uppercase tracking-wide text-slate-500;
+  }
+  .kpi-value {
+    @apply mt-2 text-2xl font-bold text-petroleo-900 tabular-nums;
+  }
+}

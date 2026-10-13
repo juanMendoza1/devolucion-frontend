@@ -8,58 +8,57 @@ export default function ModuloTarifas() {
   const [tarifaSeleccionada, setTarifaSeleccionada] = useState<{jobId: string, mes: number, anio: number} | null>(null);
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6 animate-in fade-in duration-500">
-      
-      {/* CABECERA PRINCIPAL */}
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Tarifas</h1>
-        <p className="text-gray-400 text-sm mt-1.5 font-medium">
-          Administrar la asignación de las tarifas a las ASOCIACIONES.
-        </p>
-      </div>
+    <div className="max-w-7xl">
+      <div className="page-header">
+        <div>
+          <p className="page-kicker">Parametrización</p>
+          <h1 className="page-title">Gestión de tarifas</h1>
+          <p className="page-subtitle">
+            Asigne las tarifas a las asociaciones de aprovechadores.
+          </p>
+        </div>
 
-      {/* SISTEMA DE PESTAÑAS (SIN ÍCONOS) */}
-      <div className="flex space-x-1 bg-gray-100 p-1 rounded-xl max-w-fit">
-        <button
-          onClick={() => setActiveTab('gestion')}
-          className={`px-6 py-2.5 rounded-lg text-sm font-bold transition-all ${
-            activeTab === 'gestion' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+        {/* PESTAÑAS */}
+        <div className="inline-flex gap-1 rounded-xl border border-borde bg-white p-1 shadow-suave">
+          <button
+            onClick={() => setActiveTab('gestion')}
+            className={`px-5 py-2 rounded-lg text-sm font-semibold transition-colors cursor-pointer ${
+            activeTab === 'gestion' ? 'bg-petroleo-700 text-white shadow-sm' : 'text-petroleo-700 hover:bg-petroleo-50'
           }`}
-        >
-          Asignaciones
-        </button>
-        <button
-          onClick={() => {
-            setActiveTab('auditoria');
-            setTarifaSeleccionada(null); 
-          }}
-          className={`px-6 py-2.5 rounded-lg text-sm font-bold transition-all ${
-            activeTab === 'auditoria' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+          >
+            Asignaciones
+          </button>
+          <button
+            onClick={() => {
+              setActiveTab('auditoria');
+              setTarifaSeleccionada(null); 
+            }}
+            className={`px-5 py-2 rounded-lg text-sm font-semibold transition-colors cursor-pointer ${
+            activeTab === 'auditoria' ? 'bg-petroleo-700 text-white shadow-sm' : 'text-petroleo-700 hover:bg-petroleo-50'
           }`}
-        >
-          Histórico
-        </button>
+          >
+            Histórico
+          </button>
+        </div>
       </div>
 
       {/* CONTENEDOR DE LAS VISTAS */}
-      <div className="bg-white rounded-3xl p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-50 min-h-[600px]">
-        {activeTab === 'gestion' && (
-          <>
-            {tarifaSeleccionada ? (
-              <DetalleTarifa 
-                tarifa={tarifaSeleccionada} 
-                onVolver={() => setTarifaSeleccionada(null)} 
-              />
-            ) : (
-              <GridTarifas 
-                onSelectTarifa={(tarifaData) => setTarifaSeleccionada(tarifaData)} 
-              />
-            )}
-          </>
-        )}
+      {activeTab === 'gestion' && (
+        <>
+          {tarifaSeleccionada ? (
+            <DetalleTarifa 
+              tarifa={tarifaSeleccionada} 
+              onVolver={() => setTarifaSeleccionada(null)} 
+            />
+          ) : (
+            <GridTarifas 
+              onSelectTarifa={(tarifaData) => setTarifaSeleccionada(tarifaData)} 
+            />
+          )}
+        </>
+      )}
 
-        {activeTab === 'auditoria' && <TablaAuditoria />}
-      </div>
+      {activeTab === 'auditoria' && <TablaAuditoria />}
     </div>
   );
 }

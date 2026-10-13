@@ -34,7 +34,7 @@ export function useWebSocketProgress({ topic, onMessage, onComplete, onError }: 
       webSocketFactory: () => new SockJS(WS_URL),
       reconnectDelay: 5000,
       onConnect: () => {
-        console.log(`📡 Conectado y suscrito a: ${topic}`);
+        console.log(`Conectado y suscrito a: ${topic}`);
         
         client.subscribe(topic, (message: IMessage) => {
           const data: ProgressData = JSON.parse(message.body);
@@ -63,7 +63,7 @@ export function useWebSocketProgress({ topic, onMessage, onComplete, onError }: 
         });
       },
       onStompError: (frame) => {
-        console.error('❌ Error STOMP:', frame.headers['message']);
+        console.error('Error STOMP:', frame.headers['message']);
       }
     });
 
@@ -73,7 +73,7 @@ export function useWebSocketProgress({ topic, onMessage, onComplete, onError }: 
     // Cleanup: Desconectar al desmontar o al cambiar de topic
     return () => {
       client.deactivate();
-      console.log(`🔌 Desconectado de: ${topic}`);
+      console.log(`Desconectado de: ${topic}`);
     };
   }, [topic]); // El hook solo se re-ejecuta si el topic (URL) cambia
 

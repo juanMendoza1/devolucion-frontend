@@ -1,13 +1,14 @@
 import { useState } from 'react';
-import { Search } from 'lucide-react';
 import type { ReliquidacionResponse, ReliquidacionRequest } from '../../../types/reliquidacion';
 
 interface TablaResultadosProps {
   formData: ReliquidacionRequest;
   setFormData: React.Dispatch<React.SetStateAction<ReliquidacionRequest>>;
   resultados: ReliquidacionResponse[];
+  resumenes: any[];
   isProcessing: boolean;
   progreso: { porcentaje: number; mensaje: string };
+  paso: { actual: number; total: number; completadas: number };
   onCalcular: () => void;
   onForzarLimpieza: () => void;
 }
@@ -25,11 +26,11 @@ const formatDecimals = (value: number | undefined | null | string) => {
 };
 
 export default function TablaResultados({
-  formData, setFormData, resultados, isProcessing, progreso, onCalcular, onForzarLimpieza
+  formData, setFormData, resultados, resumenes, isProcessing, progreso, paso, onCalcular, onForzarLimpieza
 }: TablaResultadosProps) {
   
   const [codigosTexto, setCodigosTexto] = useState(formData.codigosPrueba.join('\n'));
-  const [filtroTabla, setFiltroTabla] = useState(''); // 🔥 Estado para el filtro de la tabla
+  const [filtroTabla, setFiltroTabla] = useState(''); // Estado para el filtro de la tabla
 
   const handleCodigosChange = (texto: string) => {
     setCodigosTexto(texto);
@@ -46,7 +47,7 @@ export default function TablaResultados({
     }));
   };
 
-  // 🔥 Lógica de filtrado de la tabla
+  // Lógica de filtrado de la tabla
   const resultadosFiltrados = resultados.filter(item => {
     if (!filtroTabla.trim()) return true;
     const termino = filtroTabla.toLowerCase();
@@ -58,190 +59,272 @@ export default function TablaResultados({
   });
 
   return (
-    <div className="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden flex flex-col relative min-h-[500px]">
+    <div className="card overflow-hidden flex flex-col relative min-h-[500px]">
       
       {/* OVERLAY DE CARGA */}
       {isProcessing && (
         <div className="absolute inset-0 bg-white/95 z-20 flex flex-col items-center justify-center p-8">
-          <h3 className="text-2xl font-bold text-black mb-4 tracking-tight">
-            {formData.esDemo ? 'Simulando Escenario...' : 'Ejecutando Motor en Producción...'}
+          <span className="spinner h-8 w-8 border-[3px] text-petroleo-600 mb-4" />
+          <h3 className="text-xl font-bold mb-2">
+            {formData.esDemo ? 'Simulando escenario...' : 'Procesando en producción...'}
           </h3>
-          {!formData.esDemo && (
-            <div className="w-full max-w-md text-center">
-              <div className="w-full bg-gray-200 h-2 mb-4 overflow-hidden rounded-full">
-                <div 
-                  className={`h-2 transition-all duration-1000 ${
-                    progreso.porcentaje > 0 && progreso.porcentaje < 100 
-                      ? 'bg-blue-600 animate-pulse' 
-                      : 'bg-black'
-                  }`} 
-                  style={{ width: `${Math.max(progreso.porcentaje, 5)}%` }}
-                ></div>
-              </div>
-              <div className="flex justify-between items-center text-xs font-bold uppercase text-gray-500 mb-6">
-                <p>{progreso.mensaje || 'Conectando...'}</p><p>{progreso.porcentaje}%</p>
-              </div>
-            </div>
+          {paso.total > 0 && (
+            <p className="text-sm font-semibold text-petroleo-700 mb-4 tabular-nums">
+              Tarifa {paso.actual} de {paso.total}
+            </p>
           )}
-          {formData.esDemo && <p className="text-sm font-bold text-gray-500 uppercase tracking-widest animate-pulse mb-6">{progreso.mensaje || 'Calculando...'}</p>}
-          <button onClick={onForzarLimpieza} className="text-xs font-bold text-gray-400 hover:text-red-500 uppercase underline transition-colors">Forzar Limpieza (Detener)</button>
+          <div className="w-full max-w-md text-center">
+            {/* Avance real: tarifas terminadas sobre el total (el cálculo de cada tarifa no reporta avance intermedio) */}
+            {paso.total > 1 && (
+              <div className="w-full bg-petroleo-100 h-2 mb-3 overflow-hidden rounded-full">
+                <div
+                  className="h-2 rounded-full bg-verde-500 transition-all duration-700"
+                  style={{ width: `${(paso.completadas / paso.total) * 100}%` }}
+                />
+              </div>
+            )}
+            <p className="text-sm text-slate-500 mb-6">{progreso.mensaje || 'Conectando...'}</p>
+          </div>
+          <button onClick={onForzarLimpieza} className="btn-link text-xs text-red-600 hover:text-red-700">Forzar limpieza (detener)</button>
         </div>
       )}
 
-      {/* CENTRO DE MANDO (HEADER INTELIGENTE) */}
-      <div className="bg-gray-50 border-b border-gray-200 p-6 z-10">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-          
-          <div className="flex-1 w-full">
-            <h2 className="text-base font-bold text-black tracking-wide uppercase mb-4">3. Entorno de Ejecución</h2>
-            <div className="flex gap-2 mb-4">
+      {/* CENTRO DE MANDO */}
+      <div className="card-header items-stretch md:items-center flex-col md:flex-row gap-6 py-5">
+        <div className="flex-1 w-full min-w-0">
+          <div className="flex flex-wrap items-center gap-4 mb-4">
+            <h2 className="text-base font-semibold">
+              <span className="text-verde-600 mr-1.5">3.</span> Entorno de ejecución
+            </h2>
+            <div className="inline-flex gap-1 rounded-xl border border-borde bg-white p-1">
               <button 
                 onClick={() => setFormData({...formData, esDemo: true})} 
-                className={`px-4 py-2 text-sm font-bold rounded-lg border ${formData.esDemo ? 'bg-white border-black text-black shadow-sm' : 'bg-transparent border-gray-300 text-gray-500'}`}
+                className={`px-4 py-1.5 rounded-lg text-sm font-semibold transition-colors cursor-pointer disabled:cursor-not-allowed ${formData.esDemo ? 'bg-petroleo-700 text-white shadow-sm' : 'text-petroleo-700 hover:bg-petroleo-50'}`}
                 disabled={isProcessing}
               >
                 Simulador
               </button>
               <button 
                 onClick={() => setFormData({...formData, esDemo: false})} 
-                className={`px-4 py-2 text-sm font-bold rounded-lg border ${!formData.esDemo ? 'bg-white border-black text-black shadow-sm' : 'bg-transparent border-gray-300 text-gray-500'}`}
+                className={`px-4 py-1.5 rounded-lg text-sm font-semibold transition-colors cursor-pointer disabled:cursor-not-allowed ${!formData.esDemo ? 'bg-petroleo-700 text-white shadow-sm' : 'text-petroleo-700 hover:bg-petroleo-50'}`}
                 disabled={isProcessing}
               >
                 Producción
               </button>
             </div>
+          </div>
 
-            {formData.esDemo ? (
-              <div className="w-full max-w-lg">
-                <textarea 
-                  value={codigosTexto}
-                  onChange={(e) => handleCodigosChange(e.target.value)}
-                  placeholder="Ingresa Códigos Dataease (ej. 12345, 67890)"
-                  className="w-full h-16 bg-white border border-gray-300 rounded p-2 text-xs font-mono outline-none resize-none"
-                  disabled={isProcessing}
-                />
-              </div>
-            ) : (
-              <div className="w-full flex gap-2 overflow-x-auto pb-2">
-                {formData.tarifasConfig.length === 0 ? <p className="text-xs text-gray-400 py-2">Configura tarifas en el paso anterior.</p> : 
+          {formData.esDemo ? (
+            <div className="w-full max-w-xl">
+              <label className="label">Códigos Dataease de prueba</label>
+              <textarea 
+                value={codigosTexto}
+                onChange={(e) => handleCodigosChange(e.target.value)}
+                placeholder="Ingrese códigos Dataease (ej. 12345, 67890)"
+                className="input h-20 py-2 text-xs font-mono resize-none"
+                disabled={isProcessing}
+              />
+            </div>
+          ) : (
+            <div>
+              <label className="label">Tarifas a procesar</label>
+              <div className="w-full flex gap-2 overflow-x-auto pb-1">
+                {formData.tarifasConfig.length === 0 ? <p className="text-sm text-slate-400 py-2">Configure tarifas en el paso anterior.</p> : 
                   formData.tarifasConfig.map(t => (
-                    <label key={`prod-${t.jobId}`} className="flex items-center gap-2 p-2 bg-white border border-gray-200 rounded cursor-pointer whitespace-nowrap">
+                    <label key={`prod-${t.jobId}`} className="flex items-center gap-2 px-3 py-2 bg-white border border-borde rounded-lg cursor-pointer whitespace-nowrap hover:border-petroleo-200">
                       <input 
                         type="checkbox" 
                         checked={formData.tarifasAProcesar.includes(t.jobId)}
                         onChange={() => toggleTarifaProductivo(t.jobId)}
                         disabled={isProcessing}
-                        className="text-black rounded-sm border-gray-300"
+                        className="accent-petroleo-700"
                       />
-                      <span className="text-xs font-bold text-gray-700">{t.nombreVisible}</span>
+                      <span className="text-xs font-semibold text-petroleo-900">{t.nombreVisible}</span>
                     </label>
                   ))
                 }
               </div>
-            )}
-          </div>
+            </div>
+          )}
+        </div>
 
-          <div className="w-full md:w-auto flex flex-col items-end gap-2 border-t md:border-t-0 md:border-l border-gray-200 pt-4 md:pt-0 md:pl-6">
-             <button 
-                onClick={onCalcular}
-                disabled={isProcessing}
-                className={`w-full md:w-64 text-white font-bold py-4 rounded-xl text-sm uppercase tracking-wide
-                  ${isProcessing ? 'bg-gray-300 cursor-not-allowed' : 'bg-black hover:bg-gray-900 shadow-md'}
-                `}
-              >
-                Procesar
-              </button>
-              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest text-right">
-                Registros: {resultadosFiltrados.length} {filtroTabla && `(de ${resultados.length})`}
-              </span>
-          </div>
+        <div className="w-full md:w-auto flex flex-col items-stretch md:items-end gap-2 border-t md:border-t-0 md:border-l border-borde pt-4 md:pt-0 md:pl-6">
+          <span className={`self-start md:self-end ${formData.esDemo ? 'badge-info' : 'badge-warn'}`}>
+            {formData.esDemo ? 'Sin impacto en base de datos' : 'Impacta la base de datos'}
+          </span>
+          <button 
+            onClick={onCalcular}
+            disabled={isProcessing}
+            className="btn-success md:w-56 py-3"
+          >
+            Procesar
+          </button>
+          {formData.esDemo && (
+            <span className="text-xs text-slate-400 text-right tabular-nums">
+              Registros: {resultadosFiltrados.length} {filtroTabla && `(de ${resultados.length})`}
+            </span>
+          )}
         </div>
       </div>
 
-      {/* 🔥 BARRA DE BÚSQUEDA DE LA TABLA */}
-      {resultados.length > 0 && (
-        <div className="bg-white px-4 py-3 border-b border-gray-100 flex items-center">
-          <div className="relative w-full max-w-md">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <Search className="h-4 w-4 text-gray-400" />
-            </div>
-            <input
-              type="text"
-              placeholder="Buscar por Código, Factura o Concepto..."
-              value={filtroTabla}
-              onChange={(e) => setFiltroTabla(e.target.value)}
-              className="block w-full pl-10 pr-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-900 focus:bg-white focus:border-black outline-none transition-colors"
-            />
-          </div>
+      {/* PRODUCCIÓN: solo tarjetas de resumen por tarifa (el detalle se consulta en Consolidados y en el Visor) */}
+      {!formData.esDemo && <ResumenesProduccion resumenes={resumenes} isProcessing={isProcessing} />}
+
+      {/* BARRA DE BÚSQUEDA DE LA TABLA (simulador) */}
+      {formData.esDemo && resultados.length > 0 && (
+        <div className="px-6 py-3 border-b border-borde flex items-center">
+          <input
+            type="text"
+            placeholder="Buscar por código, factura o concepto"
+            value={filtroTabla}
+            onChange={(e) => setFiltroTabla(e.target.value)}
+            className="input max-w-md py-2"
+          />
         </div>
       )}
 
-      {/* CONTENIDO DE TABLA */}
-      <div className="overflow-x-auto flex-1 p-4 bg-white relative">
+      {/* CONTENIDO DE TABLA (simulador) */}
+      {formData.esDemo && (
+      <div className="overflow-x-auto flex-1 relative">
         {resultados.length === 0 && !isProcessing ? (
-          <div className="h-full min-h-[200px] flex flex-col items-center justify-center text-black space-y-2">
-            <p className="text-sm font-bold uppercase tracking-widest text-gray-400">Sin Datos</p>
+          <div className="h-full min-h-[240px] flex flex-col items-center justify-center text-center px-6">
+            <p className="text-sm font-semibold text-petroleo-900">Sin resultados todavía</p>
+            <p className="text-sm text-slate-400 mt-1 max-w-md">
+              Configure la devolución y las tarifas, y presione Procesar para ver aquí el detalle del cálculo.
+            </p>
           </div>
         ) : resultadosFiltrados.length > 0 ? (
-          <table className="w-full text-sm text-left whitespace-nowrap">
-            <thead className="text-black font-bold text-xs uppercase tracking-wider border-b-2 border-black sticky top-0 bg-white shadow-[0_1px_0_0_black]">
+          <table className="table-base whitespace-nowrap">
+            <thead className="sticky top-0">
               <tr>
-                <th className="px-4 py-3">Tarifa</th>
-                <th className="px-4 py-3">Código Dataease</th>
-                <th className="px-4 py-3">Factura</th>
-                <th className="px-4 py-3">Concepto</th>
-                <th className="px-4 py-3 text-center">Periodo</th>
-                <th className="px-4 py-3 text-right">Ajustado</th>
-                <th className="px-4 py-3 text-right">Subcon</th>
-                <th className="px-4 py-3 text-center">Tasa Aplicada</th>
-                <th className="px-4 py-3 text-right">Capital Base</th>
-                <th className="px-4 py-3 text-right">Intereses</th>
-                <th className="px-4 py-3 text-right">Total</th>
+                <th>Tarifa</th>
+                <th>Código Dataease</th>
+                <th>Factura</th>
+                <th>Concepto</th>
+                <th className="text-center">Periodo</th>
+                <th className="text-right">Ajustado</th>
+                <th className="text-right">Subcon</th>
+                <th className="text-right">Tasa aplicada</th>
+                <th className="text-right">Capital base</th>
+                <th className="text-right">Intereses</th>
+                <th className="text-right">Total</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-100">
+            <tbody>
               {resultadosFiltrados.map((item, index) => {
                 // Buscamos el nombre legible de la tarifa
                 const nombreTarifa = formData.tarifasConfig.find(t => t.jobId === item.jobId)?.nombreVisible || item.jobId.substring(0, 8);
                 
                 return (
-                  <tr key={item.id || index} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-4 py-3 text-xs font-bold text-gray-900">{nombreTarifa}</td>
-                    <td className="px-4 py-3 font-bold text-black">{item.codigoDataease || '-'}</td>
-                    <td className="px-4 py-3 font-semibold text-black">
+                  <tr key={item.id || index}>
+                    <td className="text-xs font-semibold text-petroleo-900">{nombreTarifa}</td>
+                    <td className="font-mono font-semibold text-petroleo-900">{item.codigoDataease || '-'}</td>
+                    <td className="font-medium">
                       {item.factura || item.facturaOriginalId}
-                      {item.desocupadoMesBase && <span className="ml-2 text-[10px] text-gray-500 font-bold uppercase border border-gray-300 px-1.5 py-0.5">Vacío</span>}
+                      {item.desocupadoMesBase && <span className="badge-off ml-2">Vacío</span>}
                     </td>
-                    <td className="px-4 py-3 text-black text-xs font-bold">{item.concepto}</td>
+                    <td className="text-xs font-semibold">{item.concepto}</td>
                     
-                    {/* 🔥 CORREGIDO: Mostramos Mes/Año centrado */}
-                    <td className="px-4 py-3 text-black text-xs font-bold text-center">
+                    {/* Mes/Año centrado */}
+                    <td className="text-xs font-semibold text-center tabular-nums">
                       {String(item.mesBase).padStart(2, '0')}/{item.anioBase}
                     </td>
                     
                     {/* Cálculos sin redondear */}
-                    <td className="px-4 py-3 text-right font-medium text-gray-500">{formatDecimals(item.ajustado)}</td>
-                    <td className="px-4 py-3 text-right font-medium text-blue-600 bg-blue-50/50">{formatDecimals(item.subcon)}</td>
+                    <td className="text-right tabular-nums text-slate-500">{formatDecimals(item.ajustado)}</td>
+                    <td className="text-right tabular-nums text-petroleo-600 bg-petroleo-50/40">{formatDecimals(item.subcon)}</td>
                     
-                    {/* 🔥 CORREGIDO: Tasa con todos sus decimales */}
-                    <td className="px-4 py-3 text-center font-mono font-bold text-gray-600">
+                    {/* Tasa con todos sus decimales */}
+                    <td className="text-right tabular-nums font-mono text-slate-600">
                       {item.detalleTasas ? formatDecimals(item.detalleTasas) : '0'}
                     </td>
                     
-                    <td className="px-4 py-3 text-right font-medium text-gray-600">{formatDecimals(item.capitalReliquidado)}</td>
-                    <td className="px-4 py-3 text-right font-medium text-gray-600">{formatDecimals(item.interesesCalculados)}</td>
-                    <td className="px-4 py-3 text-right font-bold text-black">{formatDecimals(item.totalDevolucion)}</td>
+                    <td className="text-right tabular-nums text-slate-600">{formatDecimals(item.capitalReliquidado)}</td>
+                    <td className="text-right tabular-nums text-slate-600">{formatDecimals(item.interesesCalculados)}</td>
+                    <td className="text-right tabular-nums font-bold text-petroleo-900">{formatDecimals(item.totalDevolucion)}</td>
                   </tr>
                 );
               })}
             </tbody>
           </table>
         ) : (
-          <div className="h-full min-h-[200px] flex flex-col items-center justify-center text-black space-y-2">
-            <p className="text-sm font-bold uppercase tracking-widest text-gray-400">No hay coincidencias en la búsqueda</p>
+          <div className="h-full min-h-[200px] flex flex-col items-center justify-center">
+            <p className="text-sm text-slate-400">No hay coincidencias en la búsqueda.</p>
           </div>
         )}
       </div>
+      )}
     </div>
   ); 
+}
+
+const fmtValor = (v: any) => {
+  const n = Number(v ?? 0);
+  const texto = Math.abs(n).toLocaleString('es-CO', { maximumFractionDigits: 10 });
+  return n < 0 ? `-$${texto}` : `$${texto}`;
+};
+
+/** Tarjetas de resumen de las tarifas liquidadas en la ejecución actual, con el total acumulado. */
+function ResumenesProduccion({ resumenes, isProcessing }: { resumenes: any[]; isProcessing: boolean }) {
+  if (resumenes.length === 0) {
+    return (
+      <div className="min-h-[240px] flex flex-col items-center justify-center text-center px-6">
+        <p className="text-sm font-semibold text-petroleo-900">{isProcessing ? 'Procesando...' : 'Sin tarifas procesadas'}</p>
+        <p className="text-sm text-slate-400 mt-1 max-w-md">
+          Al procesar, aquí aparecerá el resumen de cada tarifa liquidada. El detalle por usuario se consulta en Consolidados y en el Visor de facturas.
+        </p>
+      </div>
+    );
+  }
+
+  const total = resumenes.reduce(
+    (acc, r) => ({
+      usuarios: acc.usuarios + Number(r.usuarios || 0),
+      capital: acc.capital + Number(r.capital || 0),
+      intereses: acc.intereses + Number(r.intereses || 0),
+      total: acc.total + Number(r.total || 0),
+    }),
+    { usuarios: 0, capital: 0, intereses: 0, total: 0 }
+  );
+
+  return (
+    <div className="p-6 space-y-5">
+      {resumenes.length > 1 && (
+        <div className="rounded-xl bg-petroleo-900 text-white px-5 py-4 flex flex-wrap items-center justify-between gap-4">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-widest text-verde-300">Total de esta ejecución</p>
+            <p className="text-xs text-petroleo-200 mt-0.5">{resumenes.length} tarifas liquidadas</p>
+          </div>
+          <div className="flex flex-wrap gap-6 text-sm tabular-nums">
+            <span>Capital <b>{fmtValor(total.capital)}</b></span>
+            <span>Intereses <b>{fmtValor(total.intereses)}</b></span>
+            <span className="text-lg font-bold">{fmtValor(total.total)}</span>
+          </div>
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+        {resumenes.map((r, i) => (
+          <div key={`${r.nombreTarifa}-${i}`} className="rounded-xl border border-borde bg-white shadow-suave overflow-hidden">
+            <div className="px-5 py-4 bg-petroleo-50 border-b border-borde flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <p className="page-kicker">Tarifa liquidada</p>
+                <p className="mt-1 text-sm font-bold text-petroleo-900 truncate" title={r.nombreTarifa}>{r.nombreTarifa}</p>
+              </div>
+              <span className="badge-info shrink-0">{r.concepto}</span>
+            </div>
+            <div className="px-5 py-4 space-y-2.5 text-sm">
+              <div className="flex justify-between"><span className="kpi-label">Usuarios</span><span className="font-semibold tabular-nums">{Number(r.usuarios || 0).toLocaleString('es-CO')}</span></div>
+              <div className="flex justify-between"><span className="kpi-label">Capital</span><span className="tabular-nums">{fmtValor(r.capital)}</span></div>
+              <div className="flex justify-between"><span className="kpi-label">Intereses</span><span className="tabular-nums">{fmtValor(r.intereses)}</span></div>
+            </div>
+            <div className="px-5 py-3 bg-verde-50 border-t border-verde-200 flex justify-between items-center">
+              <span className="text-xs font-semibold text-verde-800 uppercase tracking-wide">Total</span>
+              <span className="font-bold text-petroleo-900 tabular-nums">{fmtValor(r.total)}</span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
 }

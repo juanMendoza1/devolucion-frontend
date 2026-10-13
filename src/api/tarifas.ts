@@ -12,9 +12,9 @@ export const getTarifasPorLote = async (jobId: string, mes: number, anio: number
   return response.data;
 };
 
-// 3. Obtiene la lista para el menú desplegable
+// 3. Aprovechadores activos (id, nit, nombre) para asignar tarifas
 export const getAprovechadoresActivos = async () => {
-  const response = await api.get('/tarifas/aprovechadores/activos');
+  const response = await api.get('/aprovechadores', { params: { soloActivos: true } });
   return response.data;
 };
 
@@ -31,6 +31,12 @@ export const asignarLoteCompleto = async (data: { jobId: string; mes: number; an
 
 export const resetFactoryTarifas = async () => {
   const response = await api.delete('/tarifas/reset-factory');
+  return response.data;
+};
+
+// Elimina un lote completo (solo si no tiene asignaciones activas ni se usó en una devolución)
+export const eliminarLoteTarifas = async (jobId: string) => {
+  const response = await api.delete(`/tarifas/lote/${jobId}`);
   return response.data;
 };
 

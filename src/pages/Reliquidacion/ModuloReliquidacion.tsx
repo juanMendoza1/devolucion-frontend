@@ -1,11 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import toast from 'react-hot-toast';
-import { CheckCircle2, ChevronRight, Activity } from 'lucide-react';
 import { reliquidacionApi } from '../../api/reliquidacion';
 import { useWebSocketProgress } from '../../hooks/useWebSocketProgress';
 import type { ReliquidacionRequest, ReliquidacionResponse, ParametrosConfig, DevolucionMaestro } from '../../types/reliquidacion';
 import PanelConfiguracion from './components/PanelConfiguracion';
 import TablaResultados from './components/TablaResultados';
+import { confirmar } from '../../utils/confirmar';
 
 export const ModuloReliquidacion = () => {
   const [loadingConfig, setLoadingConfig] = useState(true);
@@ -13,9 +13,12 @@ export const ModuloReliquidacion = () => {
   const [config, setConfig] = useState<ParametrosConfig | null>(null);
   const [consolidados, setConsolidados] = useState<DevolucionMaestro[]>([]);
   const [resultados, setResultados] = useState<ReliquidacionResponse[]>([]);
+  // Resúmenes de las tarifas procesadas en la ejecución actual (en producción reemplazan el listado)
+  const [resumenes, setResumenes] = useState<any[]>([]);
 
-  // 🔥 ESTADOS PARA LA ORQUESTACIÓN PASO A PASO
+  // ESTADOS PARA LA ORQUESTACIÓN PASO A PASO
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
+  const [paso, setPaso] = useState({ actual: 0, total: 0, completadas: 0 });
   const [showSummaryModal, setShowSummaryModal] = useState(false);
   const [lastSummary, setLastSummary] = useState<any>(null);
 
@@ -39,24 +42,42 @@ export const ModuloReliquidacion = () => {
     }
   });
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [paramsData, consolidadosData] = await Promise.all([
-          reliquidacionApi.getParametros(),
-          reliquidacionApi.getConsolidados()
-        ]);
-        setConfig(paramsData);
-        setConsolidados(consolidadosData);
-      } catch (error) {
-        console.error('Error:', error);
-        toast.error('Error al cargar la configuración inicial.');
-      } finally {
-        setLoadingConfig(false);
-      }
-    };
-    fetchData();
+  /**
+   * Carga (o recarga) tarifas disponibles y devoluciones. Las tarifas ya liquidadas no vienen del backend,
+   * así que se quitan también de la configuración en pantalla para que no se puedan volver a procesar.
+   */
+  const cargarConfiguracion = useCallback(async () => {
+    try {
+      const [paramsData, consolidadosData] = await Promise.all([
+        reliquidacionApi.getParametros(),
+        reliquidacionApi.getConsolidados()
+      ]);
+      setConfig(paramsData);
+      setConsolidados(consolidadosData);
+      const disponibles = new Set((paramsData?.lotes || []).map((l: any) => l.jobId));
+      setFormData(prev => ({
+        ...prev,
+        tarifasConfig: prev.tarifasConfig.filter(t => disponibles.has(t.jobId)),
+        tarifasAProcesar: prev.tarifasAProcesar.filter(id => disponibles.has(id)),
+      }));
+    } catch (error) {
+      console.error('Error:', error);
+      toast.error('Error al cargar la configuración.');
+    } finally {
+      setLoadingConfig(false);
+    }
   }, []);
+
+  useEffect(() => {
+    cargarConfiguracion();
+  }, [cargarConfiguracion]);
+
+  const finalizarProceso = (mensaje?: string) => {
+    setShowSummaryModal(false);
+    setIsProcessing(false);
+    if (mensaje) toast.success(mensaje);
+    cargarConfiguracion();
+  };
 
   const getConfiguracionesActivas = () => {
     return formData.esDemo 
@@ -69,13 +90,13 @@ export const ModuloReliquidacion = () => {
     
     // Si ya terminamos con todas las tarifas
     if (index >= configuraciones.length) {
-      toast.success('¡Proceso Global Finalizado!');
-      setIsProcessing(false);
+      finalizarProceso('Proceso finalizado.');
       return;
     }
 
     const tarifaActual = configuraciones[index];
     setIsProcessing(true);
+    setPaso({ actual: index + 1, total: configuraciones.length, completadas: index });
     setProgreso({ porcentaje: 0, mensaje: `Preparando ${tarifaActual.nombreVisible}...` });
 
     // Armamos el payload mandando SOLO la tarifa que toca en este paso
@@ -87,39 +108,40 @@ export const ModuloReliquidacion = () => {
 
     try {
       const response: any = await reliquidacionApi.calcular(payloadPaso);
+      setPaso({ actual: index + 1, total: configuraciones.length, completadas: index + 1 });
       
-      // La API ahora devuelve { resultados: [...], resumen: {...} }
+      // La API devuelve { resultados: [...], resumen: {...} }
       if (response.resultados && response.resultados.length > 0) {
         setResultados(prev => [...prev, ...response.resultados]);
       }
       
-      // Guardamos el resumen y mostramos el modal
       if (response.resumen) {
+        setResumenes(prev => [...prev, response.resumen]);
         setLastSummary({
           ...response.resumen,
           pendientes: configuraciones.length - index - 1
         });
         setShowSummaryModal(true);
       } else {
-        // Si no hay resumen (ej. no procesó nada), avanzamos automático
         ejecutarPaso(index + 1);
       }
       
     } catch (error: any) {
-      toast.error(error?.response?.data?.error || `Error procesando ${tarifaActual.nombreVisible}`, { duration: 6000 });
-      setIsProcessing(false);
+      toast.error(error?.response?.data?.error || `Error procesando ${tarifaActual.nombreVisible}`, { duration: 8000 });
+      finalizarProceso();
     }
   };
 
   const iniciarOrquestacion = () => {
     setResultados([]);
+    setResumenes([]);
     setCurrentStepIndex(0);
     ejecutarPaso(0);
   };
 
   const handleCalcular = async () => {
-    if (!formData.nombreDevolucion.trim()) return toast.error('Debes asignar un Nombre a la Devolución.');
-    if (formData.tarifasConfig.length === 0) return toast.error('Configura al menos una Tarifa.');
+    if (!formData.nombreDevolucion.trim()) return toast.error('Debes asignar un nombre a la devolución.');
+    if (formData.tarifasConfig.length === 0) return toast.error('Configura al menos una tarifa.');
     
     const sinPeriodos = formData.tarifasConfig.find(t => t.periodosOrdenados.length === 0);
     if (sinPeriodos) {
@@ -128,37 +150,19 @@ export const ModuloReliquidacion = () => {
 
     if (formData.esDemo) {
       if (formData.codigosPrueba.length === 0) {
-        return toast.error('En Prueba, ingresa al menos un Código.');
+        return toast.error('En el simulador, ingresa al menos un código.');
       }
       iniciarOrquestacion();
     } else {
       if (formData.tarifasAProcesar.length === 0) {
         return toast.error('Selecciona al menos una tarifa a procesar.');
       }
-      
-      toast((t) => (
-        <div className="flex flex-col gap-2">
-          <p className="font-bold text-sm text-gray-900">¿Impactar Base de Datos?</p>
-          <p className="text-xs text-gray-500">Se procesarán {formData.tarifasAProcesar.length} tarifa(s) en producción.</p>
-          <div className="flex gap-2 mt-2">
-            <button 
-              onClick={() => {
-                toast.dismiss(t.id);
-                iniciarOrquestacion();
-              }}
-              className="bg-black text-white text-xs font-bold px-3 py-1.5 rounded-md hover:bg-gray-800 transition-colors"
-            >
-              Sí, ejecutar
-            </button>
-            <button 
-              onClick={() => toast.dismiss(t.id)}
-              className="bg-gray-100 text-gray-700 text-xs font-bold px-3 py-1.5 rounded-md hover:bg-gray-200 transition-colors"
-            >
-              Cancelar
-            </button>
-          </div>
-        </div>
-      ), { duration: Infinity, position: 'top-center' });
+      const ok = await confirmar({
+        titulo: '¿Procesar en producción?',
+        detalle: `Se liquidarán ${formData.tarifasAProcesar.length} tarifa(s). Una tarifa liquidada no se puede volver a procesar.`,
+        textoConfirmar: 'Sí, procesar',
+      });
+      if (ok) iniciarOrquestacion();
     }
   };
 
@@ -169,16 +173,33 @@ export const ModuloReliquidacion = () => {
     ejecutarPaso(next);
   };
 
+  const encabezado = (
+    <div className="page-header">
+      <div>
+        <p className="page-kicker">Cálculo</p>
+        <h1 className="page-title">Reliquidación</h1>
+        <p className="page-subtitle">
+          Configure la devolución, las tarifas y los periodos, y ejecute el cálculo en prueba o producción.
+        </p>
+      </div>
+    </div>
+  );
+
   if (loadingConfig) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center min-h-[400px]">
-        <span className="text-black font-semibold text-lg animate-pulse">Cargando configuración...</span>
+      <div className="max-w-7xl">
+        {encabezado}
+        <div className="card card-body py-16 text-center text-slate-400 text-sm">
+          <span className="spinner mr-2" /> Cargando configuración...
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6 pt-4 animate-in fade-in relative">
+    <div className="max-w-7xl space-y-6 relative">
+      {encabezado}
+
       <PanelConfiguracion 
         formData={formData} 
         setFormData={setFormData}
@@ -191,72 +212,56 @@ export const ModuloReliquidacion = () => {
         formData={formData}
         setFormData={setFormData}
         resultados={resultados}
+        resumenes={resumenes}
         isProcessing={isProcessing}
         progreso={progreso}
+        paso={paso}
         onCalcular={handleCalcular}
-        onForzarLimpieza={() => {
-          setIsProcessing(false);
-          setShowSummaryModal(false);
-        }}
+        onForzarLimpieza={() => finalizarProceso()}
       />
 
-      {/* 🔥 MODAL DE RESUMEN EJECUTIVO (DISEÑO MINIMALISTA / NEUTRO) */}
+      {/* MODAL DE RESUMEN */}
       {showSummaryModal && lastSummary && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-gray-900/40 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm overflow-hidden flex flex-col animate-in zoom-in-95 border border-gray-200">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-petroleo-950/50 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-elevada w-full max-w-sm overflow-hidden flex flex-col border border-borde">
             
-            {/* ENCABEZADO GRIS CLARO */}
-            <div className="p-6 bg-gray-50 border-b border-gray-200 text-center">
-              <div className="bg-white border border-gray-200 w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-3 shadow-sm">
-                <CheckCircle2 className="h-6 w-6 text-gray-700" />
-              </div>
-              <h2 className="text-lg font-bold tracking-tight text-gray-900">Tarifa Procesada</h2>
-              <p className="text-gray-500 text-xs mt-1 font-mono">{lastSummary.nombreTarifa}</p>
+            <div className="px-6 py-5 bg-petroleo-50 border-b border-borde">
+              <p className="page-kicker">Paso completado</p>
+              <h2 className="mt-1 text-lg font-bold">Tarifa procesada</h2>
+              <p className="text-slate-500 text-xs mt-1 font-mono">{lastSummary.nombreTarifa}</p>
             </div>
             
-            {/* CUERPO DEL MODAL */}
-            <div className="p-6 space-y-4">
-              <div className="flex justify-between items-center border-b border-gray-100 pb-3">
-                <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wide">Concepto</span>
-                <span className="text-sm font-bold text-gray-900">{lastSummary.concepto}</span>
+            <div className="p-6 space-y-3 text-sm">
+              <div className="flex justify-between items-center border-b border-slate-100 pb-3">
+                <span className="kpi-label">Concepto</span>
+                <span className="font-semibold text-petroleo-900">{lastSummary.concepto}</span>
               </div>
-              <div className="flex justify-between items-center border-b border-gray-100 pb-3">
-                <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wide">Usuarios Procesados</span>
-                <span className="text-sm font-bold text-gray-900">{lastSummary.usuarios?.toLocaleString('es-CO')}</span>
+              <div className="flex justify-between items-center border-b border-slate-100 pb-3">
+                <span className="kpi-label">Usuarios procesados</span>
+                <span className="font-semibold text-petroleo-900 tabular-nums">{lastSummary.usuarios?.toLocaleString('es-CO')}</span>
               </div>
-              <div className="flex justify-between items-center border-b border-gray-100 pb-3">
-                <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wide">Capital Base</span>
-                <span className="text-sm font-medium text-gray-700">${lastSummary.capital?.toLocaleString('es-CO')}</span>
+              <div className="flex justify-between items-center border-b border-slate-100 pb-3">
+                <span className="kpi-label">Capital base</span>
+                <span className="text-slate-700 tabular-nums">${lastSummary.capital?.toLocaleString('es-CO', { maximumFractionDigits: 10 })}</span>
               </div>
-              <div className="flex justify-between items-center border-b border-gray-100 pb-3">
-                <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wide">Intereses Generados</span>
-                <span className="text-sm font-medium text-gray-700">${lastSummary.intereses?.toLocaleString('es-CO')}</span>
+              <div className="flex justify-between items-center border-b border-slate-100 pb-3">
+                <span className="kpi-label">Intereses generados</span>
+                <span className="text-slate-700 tabular-nums">${lastSummary.intereses?.toLocaleString('es-CO', { maximumFractionDigits: 10 })}</span>
               </div>
-              <div className="flex justify-between items-center bg-gray-50 p-3 rounded-lg border border-gray-200 mt-2">
-                <span className="text-xs font-bold text-gray-900 uppercase">Total Parcial</span>
-                <span className="text-base font-black text-gray-900">${lastSummary.total?.toLocaleString('es-CO')}</span>
+              <div className="flex justify-between items-center bg-verde-50 p-3 rounded-xl border border-verde-200 mt-2">
+                <span className="text-xs font-semibold text-verde-800 uppercase tracking-wide">Total parcial</span>
+                <span className="text-base font-bold text-petroleo-900 tabular-nums">${lastSummary.total?.toLocaleString('es-CO', { maximumFractionDigits: 10 })}</span>
               </div>
             </div>
 
-            {/* BOTONES GRISES/NEUTROS */}
-            <div className="p-4 bg-white border-t border-gray-100">
+            <div className="p-4 border-t border-borde">
               {lastSummary.pendientes > 0 ? (
-                <button 
-                  onClick={onContinuarPaso} 
-                  className="w-full flex items-center justify-center bg-gray-900 text-white font-bold py-3 rounded-xl text-sm hover:bg-black transition-colors shadow-sm"
-                >
-                  Siguiente Tarifa ({lastSummary.pendientes} pendientes) <ChevronRight className="h-4 w-4 ml-2" />
+                <button onClick={onContinuarPaso} className="btn-primary w-full py-3">
+                  Siguiente tarifa ({lastSummary.pendientes} pendientes)
                 </button>
               ) : (
-                <button 
-                  onClick={() => { 
-                    setShowSummaryModal(false); 
-                    setIsProcessing(false);
-                    toast.success('¡Proceso Global Finalizado!');
-                  }} 
-                  className="w-full flex items-center justify-center bg-gray-100 text-gray-900 font-bold py-3 rounded-xl text-sm hover:bg-gray-200 border border-gray-200 transition-colors shadow-sm"
-                >
-                  <Activity className="h-4 w-4 mr-2" /> Finalizar y Ver Tabla
+                <button onClick={() => finalizarProceso('Proceso finalizado.')} className="btn-success w-full py-3">
+                  Finalizar
                 </button>
               )}
             </div>

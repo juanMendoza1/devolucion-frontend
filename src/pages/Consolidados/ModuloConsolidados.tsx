@@ -1,7 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { reliquidacionApi } from '../../api/reliquidacion';
 import type { DevolucionMaestro, DesgloseMes } from '../../types/reliquidacion';
-import { Beaker, Database, Eye, X, ChevronDown } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export default function ModuloConsolidados() {
@@ -52,7 +51,7 @@ export default function ModuloConsolidados() {
     );
   };
 
-  // 🔥 Lógica de agrupación para el Acordeón
+  // Lógica de agrupación para el Acordeón
   const datosAgrupados = useMemo(() => {
     return detalleMensual.reduce((acc, curr) => {
       if (!acc[curr.jobId]) acc[curr.jobId] = [];
@@ -61,71 +60,86 @@ export default function ModuloConsolidados() {
     }, {} as Record<string, DesgloseMes[]>);
   }, [detalleMensual]);
 
-  // 🔥 Calculamos la suma total exacta de lo que hay en pantalla
+  // Calculamos la suma total exacta de lo que hay en pantalla
   const sumaTotalConsolidado = useMemo(() => {
     return detalleMensual.reduce((sum, item) => sum + (item.total || 0), 0);
   }, [detalleMensual]);
 
+  const encabezado = (
+    <div className="page-header">
+      <div>
+        <p className="page-kicker">Cálculo</p>
+        <h1 className="page-title">Consolidados</h1>
+        <p className="page-subtitle">Historial de devoluciones calculadas, con su desglose mensual por tarifa.</p>
+      </div>
+      {consolidados.length > 0 && (
+        <div className="kpi min-w-36">
+          <p className="kpi-label">Ejecuciones</p>
+          <p className="kpi-value">{consolidados.length}</p>
+        </div>
+      )}
+    </div>
+  );
+
   if (isLoading) {
-    return <div className="p-8 text-center font-bold text-gray-500 animate-pulse">Cargando consolidados...</div>;
+    return (
+      <div className="max-w-7xl">
+        {encabezado}
+        <div className="card card-body py-16 text-center text-slate-400 text-sm">
+          <span className="spinner mr-2" /> Cargando consolidados...
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div className="space-y-6 animate-in fade-in pb-12 relative max-w-7xl mx-auto">
-      
-      {/* HEADER */}
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Consolidados</h1>
-        <p className="text-gray-400 text-sm mt-1.5 font-medium">Historial de devoluciones.</p>
-      </div>
+    <div className="max-w-7xl pb-12 relative">
+      {encabezado}
 
       {/* TABLA PRINCIPAL */}
-      <div className="bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-50 overflow-hidden">
-        <div className="overflow-x-auto p-2">
-          <table className="w-full text-sm text-left whitespace-nowrap">
-            <thead className="bg-[#F8F9FA] text-gray-400 font-bold text-xs uppercase tracking-wider">
+      <div className="card overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="table-base whitespace-nowrap">
+            <thead>
               <tr>
-                <th className="px-6 py-4 border-b border-gray-100">Lote / Entorno</th>
-                <th className="px-6 py-4 border-b border-gray-100">Nombre de Devolución</th>
-                <th className="px-6 py-4 border-b border-gray-100 text-right">Usuarios</th>
-                <th className="px-6 py-4 border-b border-gray-100 text-right">Total Capital</th>
-                <th className="px-6 py-4 border-b border-gray-100 text-right">Total Intereses</th>
-                <th className="px-6 py-4 border-b border-gray-100 text-right">Total Reliquidado</th>
-                <th className="px-6 py-4 border-b border-gray-100 text-center">Acciones</th>
+                <th>Tarifa / entorno</th>
+                <th>Nombre de devolución</th>
+                <th className="text-right">Usuarios</th>
+                <th className="text-right">Total capital</th>
+                <th className="text-right">Total intereses</th>
+                <th className="text-right">Total reliquidado</th>
+                <th className="text-right">Acciones</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50">
+            <tbody>
               {consolidados.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center text-gray-400 font-bold">
-                    No hay ejecuciones registradas en el sistema.
+                  <td colSpan={7} className="py-16 text-center whitespace-normal">
+                    <p className="text-sm font-semibold text-petroleo-900">No hay ejecuciones registradas</p>
+                    <p className="text-sm text-slate-400 mt-1">Las devoluciones calculadas en el módulo de reliquidación aparecerán aquí.</p>
                   </td>
                 </tr>
               ) : (
                 consolidados.map((item) => (
-                  <tr key={item.id} className="hover:bg-gray-50/50 transition-colors">
-                    <td className="px-6 py-4">
-                      <div className="font-mono text-xs text-gray-400 mb-1">
-                        #{item.id} • {new Date(item.fechaCalculo).toLocaleDateString()}
+                  <tr key={item.id}>
+                    <td>
+                      <div className="font-mono text-xs text-slate-400 mb-1">
+                        #{item.id} · {new Date(item.fechaCalculo).toLocaleDateString()}
                       </div>
                       {item.esDemo ? (
-                        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-amber-700 bg-amber-50 text-[10px] font-bold uppercase">
-                          <Beaker className="h-3 w-3" /> Prueba
-                        </span>
+                        <span className="badge-warn">Prueba</span>
                       ) : (
-                        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-green-700 bg-green-50 text-[10px] font-bold uppercase">
-                          <Database className="h-3 w-3" /> Prod
-                        </span>
+                        <span className="badge-ok">Producción</span>
                       )}
                     </td>
-                    <td className="px-6 py-4 font-black text-gray-900 uppercase">{item.nombreDevolucion}</td>
-                    <td className="px-6 py-4 text-right font-bold text-gray-700">{item.cantidadRegistros.toLocaleString('es-CO')}</td>
-                    <td className="px-6 py-4 text-right font-medium text-gray-500">${(item.totalCapital || 0).toLocaleString('es-CO')}</td>
-                    <td className="px-6 py-4 text-right font-medium text-blue-600">{item.totalIntereses > 0 ? '+' : ''}${(item.totalIntereses || 0).toLocaleString('es-CO')}</td>
-                    <td className="px-6 py-4 text-right font-black text-gray-900 text-base">${item.totalDevolucion.toLocaleString('es-CO')}</td>
-                    <td className="px-6 py-4 text-center">
-                      <button onClick={() => abrirDetalle(item)} className="p-2 text-gray-400 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors">
-                        <Eye className="h-5 w-5" />
+                    <td className="font-bold text-petroleo-900 uppercase">{item.nombreDevolucion}</td>
+                    <td className="text-right tabular-nums font-semibold">{item.cantidadRegistros.toLocaleString('es-CO')}</td>
+                    <td className="text-right tabular-nums text-slate-500">${(item.totalCapital || 0).toLocaleString('es-CO')}</td>
+                    <td className="text-right tabular-nums text-petroleo-600">{item.totalIntereses > 0 ? '+' : ''}${(item.totalIntereses || 0).toLocaleString('es-CO')}</td>
+                    <td className="text-right tabular-nums font-bold text-petroleo-900 text-base">${item.totalDevolucion.toLocaleString('es-CO')}</td>
+                    <td className="text-right">
+                      <button onClick={() => abrirDetalle(item)} className="btn-link">
+                        Ver detalle
                       </button>
                     </td>
                   </tr>
@@ -138,29 +152,29 @@ export default function ModuloConsolidados() {
 
       {/* MODAL DE DESGLOSE TIPO ACORDEÓN */}
       {modalOpen && maestroSeleccionado && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/40 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl shadow-xl w-full max-w-5xl overflow-hidden flex flex-col max-h-[85vh] animate-in zoom-in-95 border border-gray-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-petroleo-950/50 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-elevada w-full max-w-5xl overflow-hidden flex flex-col max-h-[85vh] border border-borde">
             
-            <div className="px-8 py-5 border-b border-gray-100 flex justify-between items-center bg-gray-50 shrink-0">
+            <div className="card-header bg-petroleo-50 shrink-0">
               <div>
-                <h3 className="text-lg font-bold text-gray-900">Devolución Mensual (Por Tarifa)</h3>
-                <p className="text-xs font-medium text-gray-500 mt-1 uppercase tracking-wider">
-                  DEVOLUCIÓN: <span className="font-bold text-gray-900">{maestroSeleccionado.nombreDevolucion}</span>
+                <h3 className="text-lg font-bold">Devolución mensual por tarifa</h3>
+                <p className="text-xs text-slate-500 mt-1 uppercase tracking-wide">
+                  Devolución: <span className="font-semibold text-petroleo-900">{maestroSeleccionado.nombreDevolucion}</span>
                 </p>
               </div>
-              <button onClick={() => setModalOpen(false)} className="p-2 bg-gray-200 text-gray-800 hover:bg-gray-300 rounded-xl transition-colors">
-                <X className="h-5 w-5" />
+              <button onClick={() => setModalOpen(false)} className="btn-secondary btn-sm">
+                Cerrar
               </button>
             </div>
 
             <div className="flex-1 overflow-auto bg-white p-6 space-y-4">
               {isLoadingDetalle ? (
-                <div className="flex justify-center items-center h-40">
-                  <span className="text-sm font-bold text-gray-400 animate-pulse uppercase tracking-widest">Cargando desglose...</span>
+                <div className="flex justify-center items-center h-40 text-sm text-slate-400">
+                  <span className="spinner mr-2" /> Cargando desglose...
                 </div>
               ) : Object.keys(datosAgrupados).length === 0 ? (
                 <div className="flex justify-center items-center h-40">
-                  <span className="text-sm font-bold text-gray-400">No hay datos mensuales registrados.</span>
+                  <span className="text-sm text-slate-400">No hay datos mensuales registrados.</span>
                 </div>
               ) : (
                 <>
@@ -176,62 +190,62 @@ export default function ModuloConsolidados() {
                     const sumaTotal = meses.reduce((sum, m) => sum + (m.total || 0), 0);
 
                     return (
-                      <div key={jobId} className="border border-gray-200 rounded-2xl overflow-hidden bg-white shadow-sm transition-all">
+                      <div key={jobId} className="border border-borde rounded-xl overflow-hidden bg-white shadow-suave">
                         {/* CABECERA DEL ACORDEÓN (CLICKABLE) */}
                         <button 
                           onClick={() => toggleGroup(jobId)} 
-                          className="w-full flex items-center justify-between p-5 bg-gray-50 hover:bg-gray-100 transition-colors text-left"
+                          className={`w-full flex items-center justify-between gap-4 px-5 py-4 transition-colors text-left cursor-pointer ${isExpanded ? 'bg-petroleo-50' : 'bg-white hover:bg-petroleo-50/60'}`}
                         >
-                          <div className="grid grid-cols-2 md:grid-cols-6 gap-4 w-full pr-4 items-center">
+                          <div className="grid grid-cols-2 md:grid-cols-6 gap-4 w-full items-center">
                             <div>
-                              <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider mb-0.5">Inicio Tarifa</p>
-                              <p className="font-black text-gray-900 text-sm">{String(mesInicial.mes).padStart(2, '0')} / {mesInicial.anio}</p>
+                              <p className="kpi-label text-[10px] mb-0.5">Inicio tarifa</p>
+                              <p className="font-bold text-petroleo-900 text-sm tabular-nums">{String(mesInicial.mes).padStart(2, '0')} / {mesInicial.anio}</p>
                             </div>
                             <div>
-                              <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider mb-0.5">Concepto</p>
-                              <p className="font-bold text-gray-900 text-sm">{mesInicial.concepto}</p>
+                              <p className="kpi-label text-[10px] mb-0.5">Concepto</p>
+                              <p className="font-semibold text-petroleo-900 text-sm">{mesInicial.concepto}</p>
                             </div>
                             <div className="text-right">
-                              <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider mb-0.5">Usuarios</p>
-                              <p className="font-bold text-gray-700 text-sm">{maxUsuarios.toLocaleString('es-CO')}</p>
+                              <p className="kpi-label text-[10px] mb-0.5">Usuarios</p>
+                              <p className="font-semibold text-slate-700 text-sm tabular-nums">{maxUsuarios.toLocaleString('es-CO')}</p>
                             </div>
                             <div className="text-right">
-                              <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider mb-0.5">Capital Base</p>
-                              <p className="font-bold text-gray-900 text-sm">${sumaCapital.toLocaleString('es-CO')}</p>
+                              <p className="kpi-label text-[10px] mb-0.5">Capital base</p>
+                              <p className="font-semibold text-petroleo-900 text-sm tabular-nums">${sumaCapital.toLocaleString('es-CO')}</p>
                             </div>
                             <div className="text-right">
-                              <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider mb-0.5">Intereses</p>
-                              <p className="font-bold text-blue-600 text-sm">${sumaIntereses.toLocaleString('es-CO')}</p>
+                              <p className="kpi-label text-[10px] mb-0.5">Intereses</p>
+                              <p className="font-semibold text-petroleo-600 text-sm tabular-nums">${sumaIntereses.toLocaleString('es-CO')}</p>
                             </div>
                             <div className="text-right">
-                              <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider mb-0.5">Subtotal Tarifa</p>
-                              <p className="font-black text-gray-900 text-base">${sumaTotal.toLocaleString('es-CO')}</p>
+                              <p className="kpi-label text-[10px] mb-0.5">Subtotal tarifa</p>
+                              <p className="font-bold text-petroleo-900 text-base tabular-nums">${sumaTotal.toLocaleString('es-CO')}</p>
                             </div>
                           </div>
-                          <ChevronDown className={`h-5 w-5 text-gray-400 shrink-0 transform transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`} />
+                          <span className="shrink-0 w-16 text-right text-xs font-semibold text-petroleo-600">{isExpanded ? 'Ocultar' : 'Mostrar'}</span>
                         </button>
 
                         {/* CUERPO DEL ACORDEÓN (TABLA DETALLE) */}
                         {isExpanded && (
-                          <div className="p-4 border-t border-gray-100 bg-white">
-                            <table className="w-full text-left text-xs border-collapse">
-                              <thead className="bg-[#F8F9FA] text-gray-500 font-bold uppercase tracking-wider">
+                          <div className="border-t border-borde overflow-x-auto">
+                            <table className="table-base text-xs">
+                              <thead>
                                 <tr>
-                                  <th className="px-4 py-2 border-b border-gray-100 rounded-tl-lg">Periodo</th>
-                                  <th className="px-4 py-2 border-b border-gray-100 text-right">Usuarios Activos</th>
-                                  <th className="px-4 py-2 border-b border-gray-100 text-right">Aporte Capital</th>
-                                  <th className="px-4 py-2 border-b border-gray-100 text-right">Intereses Mes</th>
-                                  <th className="px-4 py-2 border-b border-gray-100 text-right rounded-tr-lg">Acumulado Mes</th>
+                                  <th>Periodo</th>
+                                  <th className="text-right">Usuarios activos</th>
+                                  <th className="text-right">Aporte capital</th>
+                                  <th className="text-right">Intereses mes</th>
+                                  <th className="text-right">Acumulado mes</th>
                                 </tr>
                               </thead>
-                              <tbody className="divide-y divide-gray-50">
+                              <tbody>
                                 {meses.map((row, idx) => (
-                                  <tr key={idx} className="hover:bg-gray-50/50 transition-colors">
-                                    <td className="px-4 py-2 font-bold text-gray-700">{String(row.mes).padStart(2, '0')} / {row.anio}</td>
-                                    <td className="px-4 py-2 text-right font-medium text-gray-500">{row.usuarios?.toLocaleString('es-CO')}</td>
-                                    <td className="px-4 py-2 text-right font-medium text-gray-500">${(row.capital || 0).toLocaleString('es-CO')}</td>
-                                    <td className="px-4 py-2 text-right font-medium text-gray-500">${(row.intereses || 0).toLocaleString('es-CO')}</td>
-                                    <td className="px-4 py-2 text-right font-bold text-gray-800">${(row.total || 0).toLocaleString('es-CO')}</td>
+                                  <tr key={idx}>
+                                    <td className="font-semibold tabular-nums">{String(row.mes).padStart(2, '0')} / {row.anio}</td>
+                                    <td className="text-right tabular-nums text-slate-500">{row.usuarios?.toLocaleString('es-CO')}</td>
+                                    <td className="text-right tabular-nums text-slate-500">${(row.capital || 0).toLocaleString('es-CO')}</td>
+                                    <td className="text-right tabular-nums text-slate-500">${(row.intereses || 0).toLocaleString('es-CO')}</td>
+                                    <td className="text-right tabular-nums font-semibold text-petroleo-900">${(row.total || 0).toLocaleString('es-CO')}</td>
                                   </tr>
                                 ))}
                               </tbody>
@@ -242,10 +256,10 @@ export default function ModuloConsolidados() {
                     );
                   })}
                   
-                  {/* GRAN TOTAL DEL MODAL - ACTUALIZADO A GRIS Y CON SUMA CALCULADA */}
-                  <div className="mt-6 bg-[#F8F9FA] border border-gray-200 rounded-2xl p-6 flex flex-col md:flex-row items-center justify-between shadow-sm">
-                     <span className="text-gray-900 font-black uppercase tracking-wider text-sm">Total Consolidado</span>
-                     <span className="text-gray-900 font-black text-2xl mt-2 md:mt-0">${sumaTotalConsolidado.toLocaleString('es-CO')}</span>
+                  {/* GRAN TOTAL DEL MODAL */}
+                  <div className="mt-6 bg-petroleo-900 rounded-xl px-6 py-5 flex flex-col md:flex-row items-center justify-between text-white">
+                     <span className="text-verde-300 font-semibold uppercase tracking-widest text-xs">Total consolidado</span>
+                     <span className="font-bold text-2xl mt-2 md:mt-0 tabular-nums">${sumaTotalConsolidado.toLocaleString('es-CO')}</span>
                   </div>
                 </>
               )}
